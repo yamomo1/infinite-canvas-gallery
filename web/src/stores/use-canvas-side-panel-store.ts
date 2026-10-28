@@ -72,12 +72,13 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
     setMode: (mode) => {
         if (typeof window !== "undefined") localStorage.setItem(MODE_KEY, mode);
         if (mode === "classic") {
-            // 经典侧栏没有独立 dock；若面板处于收起状态直接切换会导致两种导航都不可见，
-            // 因此切到 classic 时强制展开面板。
+            // 经典侧栏没有独立 dock；切到 classic 时强制展开面板，否则两种导航会同时不可见。
             get().openPanel();
             return;
         }
-        set({ mode });
+        // 切回胶囊：收起面板，只留浮动胶囊（胶囊模式默认形态）。
+        // 否则面板仍展开、位置与经典侧栏一致，用户会以为"没切回去"。
+        get().closePanel();
     },
     setTab: (tab) => set({ tab }),
     openPanel: () => {
