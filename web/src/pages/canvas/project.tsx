@@ -248,6 +248,8 @@ function InfiniteCanvasPage() {
     const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [nodeCreatePosition, setNodeCreatePosition] = useState<Position | null>(null);
+    // dock「+」发起的创建：选完节点后新节点落在视口中心并避开已有节点，视口自动居中
+    const [dockCreatePending, setDockCreatePending] = useState(false);
     const [guideDismissed, setGuideDismissed] = useState(false);
     useEffect(() => {
         setGuideDismissed(false);
@@ -598,6 +600,45 @@ function InfiniteCanvasPage() {
         const rect = containerRef.current?.getBoundingClientRect();
         return screenToCanvas((rect?.left || 0) + (rect?.width || size.width) / 2, (rect?.top || 0) + (rect?.height || size.height) / 2);
     }, [screenToCanvas, size.height, size.width]);
+
+    // dock「+」创建：在视口中心附近找一个不与已有节点重叠的位置（环形向外避让）
+    // 注意：position 语义是「节点中心」（createCanvasNode 内部会减半宽高）
+    const findFreeCenterPosition = useCallback(
+        (type: CanvasNodeTypeId): Position => {
+            const center = getCanvasCenter();
+            const spec = (NODE_DEFAULT_SIZE as Record<string, { width: number; height: number }>)[type] || { width: 260, height: 260 };
+            const halfW = spec.width / 2;
+            const halfH = spec.height / 2;
+            const margin = 32;
+            const overlaps = (cx: number, cy: number) =>
+                nodesRef.current.some((node) => {
+                    const ncx = node.position.x + node.width / 2;
+                    const ncy = node.position.y + node.height / 2;
+                    return Math.abs(cx - ncx) < halfW + node.width / 2 + margin && Math.abs(cy - ncy) < halfH + node.height / 2 + margin;
+                });
+            if (!overlaps(center.x, center.y)) return center;
+            const baseStep = Math.max(spec.width, spec.height) + 64;
+            for (let ring = 1; ring <= 8; ring++) {
+                const radius = ring * baseStep;
+                const steps = 8 * ring;
+                for (let i = 0; i < steps; i++) {
+                    const angle = (i / steps) * Math.PI * 2;
+                    const x = center.x + Math.cos(angle) * radius;
+                    const y = center.y + Math.sin(angle) * radius;
+                    if (!overlaps(x, y)) return { x, y };
+                }
+            }
+            return { x: center.x + baseStep * 8, y: center.y };
+        },
+        [getCanvasCenter],
+    );
+
+    // dock「+」创建：平移视口让新节点居中（保持当前缩放；position 即节点中心）
+    const centerViewportOnNode = useCallback((position: Position) => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setViewport((prev) => ({ ...prev, x: rect.width / 2 - position.x * prev.k, y: rect.height / 2 - position.y * prev.k }));
+    }, []);
 
     const setConnecting = useCallback((next: ConnectionHandle | null) => {
         connectingParamsRef.current = next;
@@ -3188,6 +3229,7 @@ function InfiniteCanvasPage() {
                     }
                     if (sx === null || sy === null) return;
                     setContextMenu(null);
+                    setDockCreatePending(true);
                     setNodeCreatePosition(screenToCanvas(sx, sy));
                 }}
             />
@@ -3328,10 +3370,20 @@ function InfiniteCanvasPage() {
                             position={nodeCreatePosition}
                             scale={viewport.k}
                             onCreate={(type) => {
-                                createNode(type, nodeCreatePosition);
+                                if (dockCreatePending) {
+                                    const position = findFreeCenterPosition(type);
+                                    createNode(type, position);
+                                    centerViewportOnNode(position);
+                                    setDockCreatePending(false);
+                                } else {
+                                    createNode(type, nodeCreatePosition);
+                                }
                                 setNodeCreatePosition(null);
                             }}
-                            onClose={() => setNodeCreatePosition(null)}
+                            onClose={() => {
+                                setNodeCreatePosition(null);
+                                setDockCreatePending(false);
+                            }}
                         />
                     ) : null}
                 </InfiniteCanvas>
