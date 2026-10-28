@@ -1,6 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { App, Empty, Input, Modal, Popconfirm, Select, Spin, Tag } from "antd";
-import { useQuery } from "@tanstack/react-query";
+import { App, Empty, Input, Modal, Popconfirm, Select, Spin, Tag } from "antd";import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Globe, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, User, Video, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -15,7 +14,7 @@ import { fetchSourcePrompts, type Prompt } from "@/services/api/prompts";
 import { uploadMediaFile } from "@/services/file-storage";
 import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision, uploadImage } from "@/services/image-storage";
 import { useAssetStore, type Asset, type AssetKind } from "@/stores/use-asset-store";
-import { usePersonalPromptStore } from "@/stores/use-personal-prompts-store";
+import { collectCustomCategories, PERSONAL_PROMPT_CATEGORIES, PERSONAL_PROMPT_UNCATEGORIZED, usePersonalPromptStore, type PersonalPrompt } from "@/stores/use-personal-prompts-store";
 import { usePromptSourceStore } from "@/stores/use-prompt-source-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -756,9 +755,11 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
     const [keyword, setKeyword] = useState("");
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
     const [personalExpanded, setPersonalExpanded] = useState(true);
+    const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
     const [adding, setAdding] = useState(false);
     const [draftTitle, setDraftTitle] = useState("");
     const [draftPrompt, setDraftPrompt] = useState("");
+    const [draftCategory, setDraftCategory] = useState<string[]>([]);
     const [detail, setDetail] = useState<Prompt | null>(null);
     const copyPrompt = async (prompt: string) => {
         try {
@@ -780,12 +781,31 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
             message.warning(t("canvas.sidePanel.promptRequired"));
             return;
         }
-        addPersonalPrompt(draftTitle, draftPrompt);
+        addPersonalPrompt(draftTitle, draftPrompt, draftCategory[0]);
         setDraftTitle("");
         setDraftPrompt("");
+        setDraftCategory([]);
         setAdding(false);
         message.success(t("canvas.sidePanel.promptAdded"));
     };
+
+    // 个人提示词按分类分组：默认分类（人物/场景/风格/其他）优先，自定义分类按出现顺序跟在后面
+    const categoryOptions = useMemo(() => [...PERSONAL_PROMPT_CATEGORIES, ...collectCustomCategories(personalPrompts)], [personalPrompts]);
+    const personalGroups = useMemo(() => {
+        const order = [...PERSONAL_PROMPT_CATEGORIES, ...collectCustomCategories(personalPrompts)];
+        const map = new Map<string, PersonalPrompt[]>();
+        for (const item of filteredPersonal) {
+            const category = item.category?.trim() || PERSONAL_PROMPT_UNCATEGORIZED;
+            if (!map.has(category)) map.set(category, []);
+            map.get(category)!.push(item);
+        }
+        const keys = [...map.keys()].sort((a, b) => {
+            const ia = order.indexOf(a);
+            const ib = order.indexOf(b);
+            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
+        return keys.map((category) => ({ category, items: map.get(category)! }));
+    }, [filteredPersonal, personalPrompts]);
 
     return (
         <div className="flex h-full flex-col">
@@ -823,29 +843,32 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                     </button>
                     {personalExpanded ? (
                         <div className="px-1 pb-2 pt-1">
-                            {filteredPersonal.length ? (
-                                <div className="space-y-1.5">
-                                    {filteredPersonal.map((item) => (
-                                        <div key={item.id} className="group relative flex items-center gap-2.5 rounded-lg px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5">
-                                            <span className="grid size-10 shrink-0 place-items-center rounded-md" style={{ background: theme.node.panel }}>
-                                                <User className="size-4 opacity-50" />
-                                            </span>
-                                            <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="min-w-0 flex-1 text-left">
-                                                <div className="truncate text-sm font-medium leading-snug">{item.title}</div>
-                                                <div className="mt-0.5 truncate text-xs leading-snug opacity-50">{item.prompt}</div>
-                                            </button>
-                                            <div className="flex shrink-0 flex-col items-center gap-0.5">
-                                                <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.toolbar.activeText }} aria-label={t("canvas.sidePanel.inserted")} title={t("canvas.sidePanel.inserted")}>
-                                                    <Plus className="size-3.5" />
+                            {personalGroups.length ? (
+                                <div className="space-y-1">
+                                    {personalGroups.map(({ category, items }) => {
+                                        const isCollapsed = collapsedCategories[category];
+                                        return (
+                                            <div key={category}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCollapsedCategories((prev) => ({ ...prev, [category]: !prev[category] }))}
+                                                    className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold opacity-75 transition hover:opacity-100"
+                                                >
+                                                    <ChevronRight className={cn("size-3.5 transition-transform", !isCollapsed && "rotate-90")} />
+                                                    <FolderOpen className="size-3.5" />
+                                                    <span className="min-w-0 flex-1 truncate">{category}</span>
+                                                    <span className="opacity-50">{items.length}</span>
                                                 </button>
-                                                <Popconfirm title={t("canvas.sidePanel.removePromptTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={() => (removePersonalPrompt(item.id), message.success(t("canvas.sidePanel.promptRemoved")))}>
-                                                    <button type="button" className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:text-red-500 hover:opacity-100 dark:hover:bg-white/10" aria-label={t("canvas.sidePanel.removePrompt")} title={t("canvas.sidePanel.removePrompt")}>
-                                                        <Trash2 className="size-3.5" />
-                                                    </button>
-                                                </Popconfirm>
+                                                {isCollapsed ? null : (
+                                                    <div className="space-y-1 pb-1 pl-3">
+                                                        {items.map((item) => (
+                                                            <PersonalPromptRow key={item.id} item={item} theme={theme} onInsert={onInsert} onRemove={() => (removePersonalPrompt(item.id), message.success(t("canvas.sidePanel.promptRemoved")))} />
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="py-4 text-center text-xs opacity-40">{keyword.trim() ? t("canvas.sidePanel.noMatchingPrompts") : t("canvas.sidePanel.noPersonalPrompts")}</div>
@@ -888,6 +911,16 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
             >
                 <div className="space-y-3 pt-2" onWheelCapture={(event) => event.stopPropagation()}>
                     <Input size="large" placeholder={t("canvas.sidePanel.promptTitle")} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={60} />
+                    <Select
+                        mode="tags"
+                        maxCount={1}
+                        size="large"
+                        className="w-full"
+                        placeholder={t("canvas.sidePanel.promptCategoryPlaceholder")}
+                        value={draftCategory}
+                        onChange={setDraftCategory}
+                        options={categoryOptions.map((name) => ({ value: name, label: name }))}
+                    />
                     <Input.TextArea
                         size="large"
                         placeholder={t("canvas.sidePanel.promptContent")}
@@ -903,6 +936,31 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
         </div>
     );
 });
+
+function PersonalPromptRow({ item, theme, onInsert, onRemove }: { item: PersonalPrompt; theme: CanvasTheme; onInsert: (payload: InsertAssetPayload) => void; onRemove: () => void }) {
+    const { t } = useTranslation();
+    return (
+        <div className="group relative flex items-center gap-2.5 rounded-lg px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-md" style={{ background: theme.node.panel }}>
+                <User className="size-4 opacity-50" />
+            </span>
+            <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="min-w-0 flex-1 text-left">
+                <div className="truncate text-sm font-medium leading-snug">{item.title}</div>
+                <div className="mt-0.5 truncate text-xs leading-snug opacity-50">{item.prompt}</div>
+            </button>
+            <div className="flex shrink-0 flex-col items-center gap-0.5">
+                <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.toolbar.activeText }} aria-label={t("canvas.sidePanel.inserted")} title={t("canvas.sidePanel.inserted")}>
+                    <Plus className="size-3.5" />
+                </button>
+                <Popconfirm title={t("canvas.sidePanel.removePromptTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={onRemove}>
+                    <button type="button" className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:text-red-500 hover:opacity-100 dark:hover:bg-white/10" aria-label={t("canvas.sidePanel.removePrompt")} title={t("canvas.sidePanel.removePrompt")}>
+                        <Trash2 className="size-3.5" />
+                    </button>
+                </Popconfirm>
+            </div>
+        </div>
+    );
+}
 
 function PromptSourceGroup({
     sourceId,

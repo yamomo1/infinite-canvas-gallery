@@ -285,6 +285,7 @@ export default {
             galleryAssets: "Gallery assets", noGalleryAssets: "No gallery works yet",
             personalPrompts: "My prompts", systemPrompts: "System prompts", addPrompt: "Add prompt", promptTitle: "Title (optional)", promptContent: "Prompt content", savePrompt: "Save", promptRequired: "Prompt content is required", promptAdded: "Saved to My prompts", promptRemoved: "Prompt removed", noPersonalPrompts: "No personal prompts yet. Click + to add one.", removePromptTitle: "Delete this personal prompt?", removePrompt: "Delete prompt",
             addPromptHint: "Saved prompts appear in \"My prompts\" and can be inserted into the canvas anytime.",
+            promptCategory: "Category", promptCategoryPlaceholder: "Pick or type a category, e.g. Character / Scene / Style / Other", promptTitlePlaceholder: "Leave empty to use the start of the prompt as title",
         },
         pill: { newNode: "New node" },
         guide: {

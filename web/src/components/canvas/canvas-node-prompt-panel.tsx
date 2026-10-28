@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { ArrowUp, BookmarkPlus, LoaderCircle, Maximize2, Square } from "lucide-react";
-import { App, Button, Modal, Tooltip } from "antd";
+import { App, Button, Input, Modal, Select, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
-import { usePersonalPromptStore } from "@/stores/use-personal-prompts-store";
+import { collectCustomCategories, PERSONAL_PROMPT_CATEGORIES, usePersonalPromptStore } from "@/stores/use-personal-prompts-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -50,6 +50,11 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const isEditingExistingContent = hasTextContent || hasImageContent;
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
+    const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+    const [saveTitle, setSaveTitle] = useState("");
+    const [saveCategory, setSaveCategory] = useState<string[]>([]);
+    const allPrompts = usePersonalPromptStore((state) => state.prompts);
+    const categoryOptions = [...PERSONAL_PROMPT_CATEGORIES, ...collectCustomCategories(allPrompts)];
 
     // Restore prompts only when switching nodes; preserve the current input after generation on the same node.
     useEffect(() => {
@@ -76,7 +81,16 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const savePromptToPersonal = () => {
         const text = prompt.trim();
         if (!text) return;
-        addPersonalPrompt("", text);
+        setSaveTitle("");
+        setSaveCategory([]);
+        setSaveDialogOpen(true);
+    };
+
+    const submitSavePrompt = () => {
+        const text = prompt.trim();
+        if (!text) return;
+        addPersonalPrompt(saveTitle, text, saveCategory[0]);
+        setSaveDialogOpen(false);
         message.success(t("canvas.promptPanel.promptSaved"));
     };
 
@@ -176,6 +190,36 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         <Button type="text" className="!rounded-full" style={{ color: theme.node.text }} icon={<BookmarkPlus className="size-4" />} disabled={!prompt.trim()} onClick={savePromptToPersonal}>
                             {t("canvas.promptPanel.savePrompt")}
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+            <Modal
+                title={<span className="text-base font-semibold">{t("canvas.promptPanel.savePrompt")}</span>}
+                open={saveDialogOpen}
+                centered
+                width={520}
+                okText={t("canvas.promptPanel.savePrompt")}
+                cancelText={t("common.cancel")}
+                onOk={submitSavePrompt}
+                onCancel={() => setSaveDialogOpen(false)}
+                destroyOnHidden
+            >
+                <div className="space-y-3 pt-2" onWheelCapture={(event) => event.stopPropagation()}>
+                    <div>
+                        <div className="mb-1.5 text-xs font-medium opacity-60">{t("canvas.sidePanel.promptTitle")}</div>
+                        <Input value={saveTitle} onChange={(e) => setSaveTitle(e.target.value)} maxLength={60} placeholder={t("canvas.sidePanel.promptTitlePlaceholder")} />
+                    </div>
+                    <div>
+                        <div className="mb-1.5 text-xs font-medium opacity-60">{t("canvas.sidePanel.promptCategory")}</div>
+                        <Select
+                            mode="tags"
+                            maxCount={1}
+                            className="w-full"
+                            placeholder={t("canvas.sidePanel.promptCategoryPlaceholder")}
+                            value={saveCategory}
+                            onChange={setSaveCategory}
+                            options={categoryOptions.map((name) => ({ value: name, label: name }))}
+                        />
                     </div>
                 </div>
             </Modal>
