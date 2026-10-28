@@ -217,6 +217,9 @@ export default {
     canvas: {
         defaultTitle: "Infinite Canvas {{count}}",
         library: "Canvas library",
+        cloud: {
+            openFailed: "Failed to open the cloud canvas. Sign in, or check that it is public.",
+        },
         title: "Infinite Canvas",
         imported: "Imported {{count}} canvases",
         importFailed: "Import failed. Select a valid canvas package.",

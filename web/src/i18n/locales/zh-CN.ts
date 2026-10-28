@@ -217,6 +217,9 @@ export default {
     canvas: {
         defaultTitle: "无限画布 {{count}}",
         library: "画布库",
+        cloud: {
+            openFailed: "打开云端画布失败，可能未登录或该画布未公开",
+        },
         title: "无限画布",
         imported: "已导入 {{count}} 个画布",
         importFailed: "导入失败，请选择有效的画布压缩包",

@@ -19,9 +19,11 @@ import {
     getPublicCanvasDocument,
     listMyCanvasDocuments,
     updateCanvasDocument,
+    type CanvasDocument,
     type CanvasDocumentMeta,
     type CloudVisibility,
 } from "@/services/api/canvas-document";
+import { getStoredToken } from "@/services/api/newapi";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -148,6 +150,29 @@ async function deleteRemoteDocument(remoteId: number): Promise<void> {
 // Returns the new local project id.
 export async function importPublicCanvas(remoteId: number): Promise<string> {
     const doc = await getPublicCanvasDocument(remoteId);
+    const project = deserializeGraph(doc.graph ?? "", doc);
+    return useCanvasStore.getState().importCloudProject(project, doc.id, doc.updated_at * 1000);
+}
+
+// Resolves a document for the `?open=<id>` deep link: owners can open their own
+// (even private) canvases, visitors fall back to the public gallery endpoint.
+async function fetchDocumentForOpen(remoteId: number): Promise<CanvasDocument> {
+    if (getStoredToken()) {
+        try {
+            return await getCanvasDocument(remoteId);
+        } catch {
+            // Not the owner (or not public): fall through to the public endpoint.
+        }
+    }
+    return await getPublicCanvasDocument(remoteId);
+}
+
+// Opens a cloud canvas from a deep link. Reuses the local copy when the same
+// document is already synced, otherwise imports it (no duplicates).
+export async function openCloudCanvas(remoteId: number): Promise<string> {
+    const existing = useCanvasStore.getState().projects.find((project) => project.remoteId === remoteId);
+    if (existing) return existing.id;
+    const doc = await fetchDocumentForOpen(remoteId);
     const project = deserializeGraph(doc.graph ?? "", doc);
     return useCanvasStore.getState().importCloudProject(project, doc.id, doc.updated_at * 1000);
 }

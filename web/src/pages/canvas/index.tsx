@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { readZip } from "@/lib/zip";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
+import { openCloudCanvas } from "@/services/canvas-cloud-sync";
 import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import type { CanvasExportFile } from "@/types/canvas-export";
@@ -68,6 +69,23 @@ export default function CanvasPage() {
         autoOpenRef.current = true;
         enterProject(mode === "new" ? createProject(t("canvas.defaultTitle", { count: projects.length + 1 })) : projects[0]?.id || createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
     }, [createProject, hydrated, mode, projects, t]);
+
+    // 深链：/canvas?open=<云端文档 id>（从 New API 画廊 / 我的画布点进来）
+    const openRemoteId = Number(searchParams.get("open") || 0);
+    const openHandledRef = useRef(false);
+    useEffect(() => {
+        if (!hydrated || openHandledRef.current) return;
+        if (!Number.isInteger(openRemoteId) || openRemoteId <= 0) return;
+        openHandledRef.current = true;
+        void (async () => {
+            try {
+                const id = await openCloudCanvas(openRemoteId);
+                enterProject(id);
+            } catch (error) {
+                message.error(error instanceof Error ? error.message : t("canvas.cloud.openFailed"));
+            }
+        })();
+    }, [hydrated, message, openRemoteId, t]);
 
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">{t("canvas.opening")}</main>;
 
