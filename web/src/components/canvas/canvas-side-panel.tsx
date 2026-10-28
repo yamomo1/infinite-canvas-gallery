@@ -136,7 +136,16 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
             <>
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-[70] flex w-16 items-center" data-canvas-no-zoom data-pill-root>
                     <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-full border p-1.5 shadow-xl" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
-                        <DockButton label={t("canvas.pill.newNode")} accent theme={theme} onClick={onAddNodeAtCenter}>
+                        <DockButton
+                            label={t("canvas.pill.newNode")}
+                            accent
+                            theme={theme}
+                            onClick={() => {
+                                // 面板开着会盖住贴胶囊弹出的节点选择菜单，先收起再弹菜单
+                                if (panelOpen) closePanel();
+                                onAddNodeAtCenter?.();
+                            }}
+                        >
                             <Plus className="size-4" />
                         </DockButton>
                         <DockButton label={t("canvas.sidePanel.canvas")} theme={theme} active={panelOpen && tab === "canvas"} onClick={() => toggleTab("canvas")}>

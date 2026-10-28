@@ -71,6 +71,12 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
     },
     setMode: (mode) => {
         if (typeof window !== "undefined") localStorage.setItem(MODE_KEY, mode);
+        if (mode === "classic") {
+            // 经典侧栏没有独立 dock；若面板处于收起状态直接切换会导致两种导航都不可见，
+            // 因此切到 classic 时强制展开面板。
+            get().openPanel();
+            return;
+        }
         set({ mode });
     },
     setTab: (tab) => set({ tab }),
