@@ -343,6 +343,17 @@ export default {
         shortcuts: "快捷键",
         lightTheme: "切换到浅色主题",
         darkTheme: "切换到深色主题",
+        user: {
+            login: "登录",
+            logout: "退出登录",
+            username: "用户名",
+            password: "密码",
+            usernameRequired: "请输入用户名",
+            passwordRequired: "请输入密码",
+            syncCloud: "同步画布到云端",
+            syncSuccess: "云端同步完成（{{count}} 张画布）",
+            syncFailed: "云端同步失败",
+        },
     },
     home: {
         promptError: "获取提示词失败",

@@ -343,6 +343,17 @@ export default {
         shortcuts: "Keyboard shortcuts",
         lightTheme: "Switch to light theme",
         darkTheme: "Switch to dark theme",
+        user: {
+            login: "Sign in",
+            logout: "Sign out",
+            username: "Username",
+            password: "Password",
+            usernameRequired: "Username is required",
+            passwordRequired: "Password is required",
+            syncCloud: "Sync canvases to cloud",
+            syncSuccess: "Cloud sync complete ({{count}} canvas(es))",
+            syncFailed: "Cloud sync failed",
+        },
     },
     home: {
         promptError: "Failed to load prompts",

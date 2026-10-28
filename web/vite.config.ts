@@ -50,4 +50,15 @@ export default defineConfig({
         __APP_VERSION__: JSON.stringify(localVersion),
         __APP_RELEASES__: JSON.stringify(parseChangelog(localChangelog)),
     },
+    server: {
+        // During local development the canvas frontend is served by Vite while the
+        // New API backend runs separately. Proxy "/api" to it so login and canvas
+        // persistence share the same origin (no CORS, same cookie policy).
+        proxy: {
+            "/api": {
+                target: process.env.VITE_NEWAPI_PROXY_TARGET || "http://127.0.0.1:3007",
+                changeOrigin: true,
+            },
+        },
+    },
 });

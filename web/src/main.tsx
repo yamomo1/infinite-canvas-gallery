@@ -9,8 +9,12 @@ import { AppProviders } from "@/components/layout/app-providers";
 import "@/i18n";
 import { initAnalytics } from "@/lib/analytics";
 import { router } from "@/router";
+import { useUserStore } from "@/stores/use-user-store";
 
 initAnalytics();
+
+// Restore the persisted New API session (if any) before the app renders.
+void useUserStore.getState().loadSession();
 
 document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';
 

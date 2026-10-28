@@ -11,4 +11,7 @@ interface ImportMetaEnv {
     readonly VITE_ANALYTICS_GA4_ID?: string;
     // Baidu Analytics site ID
     readonly VITE_ANALYTICS_BAIDU_ID?: string;
+    // New API backend base URL. When the canvas is deployed on the same origin
+    // as New API, leave this empty so requests hit the same-origin "/api" path.
+    readonly VITE_NEWAPI_BASE_URL?: string;
 }
