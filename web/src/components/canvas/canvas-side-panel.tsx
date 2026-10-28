@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, Video, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Globe, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, User, Video, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -10,10 +10,12 @@ import { exportCanvasNodes } from "@/lib/canvas/canvas-export";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { cn } from "@/lib/utils";
 import { PromptDetailDialog } from "@/pages/prompts/components/prompt-detail-dialog";
+import { fetchGalleryMedia, type GalleryMediaItem } from "@/services/api/gallery-media";
 import { fetchSourcePrompts, type Prompt } from "@/services/api/prompts";
 import { uploadMediaFile } from "@/services/file-storage";
 import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision, uploadImage } from "@/services/image-storage";
 import { useAssetStore, type Asset, type AssetKind } from "@/stores/use-asset-store";
+import { usePersonalPromptStore } from "@/stores/use-personal-prompts-store";
 import { usePromptSourceStore } from "@/stores/use-prompt-source-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -74,6 +76,18 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
 
+    // 胶囊模式：点击 dock / 面板卡片以外的区域（画布、顶栏等）自动收起面板
+    useEffect(() => {
+        if (mode !== "pill" || !panelOpen) return;
+        const onPointerDown = (event: PointerEvent) => {
+            const target = event.target instanceof Element ? event.target : null;
+            if (!target || target.closest("[data-pill-root]")) return;
+            closePanel();
+        };
+        document.addEventListener("pointerdown", onPointerDown, true);
+        return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    }, [mode, panelOpen, closePanel]);
+
     const body = (
         <>
             <div className="flex items-center gap-4 px-4 pt-3.5">
@@ -118,7 +132,7 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
     if (mode === "pill") {
         return (
             <>
-                <div className="pointer-events-none absolute inset-y-0 left-0 z-[70] flex w-16 items-center" data-canvas-no-zoom>
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-[70] flex w-16 items-center" data-canvas-no-zoom data-pill-root>
                     <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-full border p-1.5 shadow-xl" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
                         <DockButton label={t("canvas.pill.newNode")} accent theme={theme} onClick={onAddNodeAtCenter}>
                             <Plus className="size-4" />
@@ -143,6 +157,7 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                         <motion.div
                             key="pill-panel"
                             className="pointer-events-none absolute inset-y-0 left-16 z-[65] flex items-center"
+                            data-pill-root
                             initial={{ opacity: 0, x: -16 }}
                             animate={{ opacity: panelOpen ? 1 : 0, x: panelClosing ? -12 : 0 }}
                             exit={{ opacity: 0, x: -16 }}
@@ -517,6 +532,29 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
 
     const groups = useMemo(() => ASSET_GROUPS.map((group) => ({ ...group, items: filtered.filter((asset) => asset.kind === group.kind) })).filter((group) => group.items.length > 0), [filtered]);
 
+    // 画廊素材：New API 提示词画廊收录的图片/视频作品，点击直接插入画布
+    const galleryQuery = useQuery({ queryKey: ["canvas-gallery-media"], queryFn: () => fetchGalleryMedia(100), staleTime: 1000 * 60 * 10, refetchOnWindowFocus: false, retry: 1 });
+    const [galleryCollapsed, setGalleryCollapsed] = useState(false);
+    const galleryItems = galleryQuery.data || [];
+
+    const insertGalleryMedia = async (item: GalleryMediaItem) => {
+        if (item.type === "video") {
+            onInsert({ kind: "video", url: item.url, title: item.title });
+            return;
+        }
+        try {
+            const response = await fetch(item.url, { mode: "cors" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const file = new File([blob], `${item.title || "gallery"}.png`, { type: blob.type || "image/png" });
+            const image = await uploadImage(file);
+            onInsert({ kind: "image", dataUrl: image.url, storageKey: image.storageKey, title: item.title });
+        } catch {
+            // 拉取失败（跨域等）退化为直接引用远端 URL
+            onInsert({ kind: "image", dataUrl: item.url, title: item.title });
+        }
+    };
+
     const handleFiles = async (fileList: FileList | null) => {
         const files = Array.from(fileList || []);
         if (!files.length) return;
@@ -576,6 +614,37 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                 </div>
             ) : null}
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+                <button
+                    type="button"
+                    onClick={() => setGalleryCollapsed((prev) => !prev)}
+                    className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold opacity-75 transition hover:opacity-100"
+                >
+                    <ChevronRight className={cn("size-3.5 transition-transform", !galleryCollapsed && "rotate-90")} />
+                    <Globe className="size-3.5" />
+                    <span>{t("canvas.sidePanel.galleryAssets")}</span>
+                    {galleryItems.length ? <span className="opacity-50">{galleryItems.length}</span> : null}
+                </button>
+                {galleryCollapsed ? null : (
+                    <div className="px-1 pb-2 pt-1">
+                        {galleryQuery.isLoading ? (
+                            <div className="flex justify-center py-4">
+                                <Spin size="small" />
+                            </div>
+                        ) : galleryQuery.isError ? (
+                            <button type="button" onClick={() => void galleryQuery.refetch()} className="block w-full py-3 text-center text-xs text-red-500 opacity-80 transition hover:opacity-100">
+                                {t("canvas.sidePanel.loadFailedRetry")}
+                            </button>
+                        ) : galleryItems.length ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {galleryItems.map((item) => (
+                                    <GalleryMediaCard key={item.key} item={item} theme={theme} onInsert={() => void insertGalleryMedia(item)} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-3 text-center text-xs opacity-40">{t("canvas.sidePanel.noGalleryAssets")}</div>
+                        )}
+                    </div>
+                )}
                 {groups.length ? (
                     <div className="space-y-1">
                         {groups.map((group) => {
@@ -639,6 +708,30 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
     );
 }
 
+function GalleryMediaCard({ item, theme, onInsert }: { item: GalleryMediaItem; theme: CanvasTheme; onInsert: () => void }) {
+    const { t } = useTranslation();
+    return (
+        <div className="group relative aspect-square overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ borderColor: theme.node.stroke, background: theme.node.panel }} title={item.title}>
+            {item.type === "video" ? (
+                <video src={`${item.url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
+            ) : (
+                <img src={item.url} alt={item.title} loading="lazy" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />
+            )}
+            <span className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1 py-0.5 text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">{item.type === "video" ? t("assets.kinds.video") : t("assets.kinds.image")}</span>
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-200 group-hover:opacity-100">
+                <button
+                    type="button"
+                    onClick={onInsert}
+                    className="grid size-8 place-items-center rounded-full bg-white/90 text-stone-700 shadow-sm backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
+                    aria-label={t("canvas.sidePanel.inserted")}
+                >
+                    <Plus className="size-4" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function AssetCover({ asset }: { asset: Asset }) {
     if (asset.kind === "text") return <div className="size-full overflow-hidden whitespace-pre-wrap break-words p-2.5 text-[11px] leading-snug opacity-80">{asset.data.content}</div>;
     if (asset.kind === "video") {
@@ -657,8 +750,15 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
     const { t } = useTranslation();
     const sources = usePromptSourceStore((state) => state.sources);
     const enabledSources = useMemo(() => sources.filter((source) => source.enabled), [sources]);
+    const personalPrompts = usePersonalPromptStore((state) => state.prompts);
+    const addPersonalPrompt = usePersonalPromptStore((state) => state.addPrompt);
+    const removePersonalPrompt = usePersonalPromptStore((state) => state.removePrompt);
     const [keyword, setKeyword] = useState("");
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    const [personalExpanded, setPersonalExpanded] = useState(true);
+    const [adding, setAdding] = useState(false);
+    const [draftTitle, setDraftTitle] = useState("");
+    const [draftPrompt, setDraftPrompt] = useState("");
     const [detail, setDetail] = useState<Prompt | null>(null);
 
     const copyPrompt = async (prompt: string) => {
@@ -670,6 +770,24 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
         }
     };
 
+    const filteredPersonal = useMemo(() => {
+        const q = keyword.trim().toLowerCase();
+        if (!q) return personalPrompts;
+        return personalPrompts.filter((item) => [item.title, item.prompt].join(" ").toLowerCase().includes(q));
+    }, [keyword, personalPrompts]);
+
+    const submitPersonal = () => {
+        if (!draftPrompt.trim()) {
+            message.warning(t("canvas.sidePanel.promptRequired"));
+            return;
+        }
+        addPersonalPrompt(draftTitle, draftPrompt);
+        setDraftTitle("");
+        setDraftPrompt("");
+        setAdding(false);
+        message.success(t("canvas.sidePanel.promptAdded"));
+    };
+
     return (
         <div className="flex h-full flex-col">
             <div className="px-3 pb-2.5 pt-1">
@@ -677,6 +795,83 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
                 <div className="space-y-1">
+                    <button type="button" onClick={() => setPersonalExpanded((prev) => !prev)} className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1.5 text-left text-xs font-semibold opacity-75 transition hover:opacity-100">
+                        <ChevronRight className={cn("size-3.5 transition-transform", personalExpanded && "rotate-90")} />
+                        <User className="size-3.5" />
+                        <span className="min-w-0 flex-1 truncate">{t("canvas.sidePanel.personalPrompts")}</span>
+                        {personalPrompts.length ? <span className="opacity-50">{filteredPersonal.length}</span> : null}
+                        {personalExpanded ? (
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setAdding((prev) => !prev);
+                                }}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                        event.stopPropagation();
+                                        setAdding((prev) => !prev);
+                                    }
+                                }}
+                                className="grid size-5 place-items-center rounded transition hover:bg-black/10 dark:hover:bg-white/10"
+                                title={t("canvas.sidePanel.addPrompt")}
+                                aria-label={t("canvas.sidePanel.addPrompt")}
+                            >
+                                <Plus className="size-3.5" />
+                            </span>
+                        ) : null}
+                    </button>
+                    {personalExpanded ? (
+                        <div className="px-1 pb-2 pt-1">
+                            {adding ? (
+                                <div className="mb-2 space-y-1.5 rounded-lg border p-2" style={{ borderColor: theme.toolbar.border, background: theme.node.panel }}>
+                                    <Input size="small" placeholder={t("canvas.sidePanel.promptTitle")} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={60} />
+                                    <Input.TextArea size="small" placeholder={t("canvas.sidePanel.promptContent")} value={draftPrompt} onChange={(e) => setDraftPrompt(e.target.value)} autoSize={{ minRows: 3, maxRows: 8 }} maxLength={4000} />
+                                    <div className="flex justify-end gap-1.5">
+                                        <button type="button" onClick={() => setAdding(false)} className="rounded-md px-2.5 py-1 text-xs font-medium opacity-70 transition hover:opacity-100">
+                                            {t("common.cancel")}
+                                        </button>
+                                        <button type="button" onClick={submitPersonal} className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: theme.toolbar.activeText, color: theme.toolbar.panel }}>
+                                            {t("canvas.sidePanel.savePrompt")}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {filteredPersonal.length ? (
+                                <div className="space-y-1.5">
+                                    {filteredPersonal.map((item) => (
+                                        <div key={item.id} className="group relative flex items-center gap-2.5 rounded-lg px-2 py-2 transition hover:bg-black/5 dark:hover:bg-white/5">
+                                            <span className="grid size-10 shrink-0 place-items-center rounded-md" style={{ background: theme.node.panel }}>
+                                                <User className="size-4 opacity-50" />
+                                            </span>
+                                            <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="min-w-0 flex-1 text-left">
+                                                <div className="truncate text-sm font-medium leading-snug">{item.title}</div>
+                                                <div className="mt-0.5 truncate text-xs leading-snug opacity-50">{item.prompt}</div>
+                                            </button>
+                                            <div className="flex shrink-0 flex-col items-center gap-0.5">
+                                                <button type="button" onClick={() => onInsert({ kind: "text", content: item.prompt, title: item.title })} className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10" style={{ color: theme.toolbar.activeText }} aria-label={t("canvas.sidePanel.inserted")} title={t("canvas.sidePanel.inserted")}>
+                                                    <Plus className="size-3.5" />
+                                                </button>
+                                                <Popconfirm title={t("canvas.sidePanel.removePromptTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={() => (removePersonalPrompt(item.id), message.success(t("canvas.sidePanel.promptRemoved")))}>
+                                                    <button type="button" className="grid size-6 place-items-center rounded-md opacity-60 transition hover:bg-black/10 hover:text-red-500 hover:opacity-100 dark:hover:bg-white/10" aria-label={t("canvas.sidePanel.removePrompt")} title={t("canvas.sidePanel.removePrompt")}>
+                                                        <Trash2 className="size-3.5" />
+                                                    </button>
+                                                </Popconfirm>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : adding ? null : (
+                                <div className="py-4 text-center text-xs opacity-40">{keyword.trim() ? t("canvas.sidePanel.noMatchingPrompts") : t("canvas.sidePanel.noPersonalPrompts")}</div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    <div className="flex items-center gap-1.5 px-1.5 pb-1 pt-2 text-xs font-semibold opacity-45">
+                        <BookOpen className="size-3.5" />
+                        {t("canvas.sidePanel.systemPrompts")}
+                    </div>
                     {enabledSources.length ? enabledSources.map((source) => (
                         <PromptSourceGroup
                             key={source.id}

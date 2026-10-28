@@ -282,6 +282,8 @@ export default {
             searchPrompts: "搜索提示词", noPrompts: "暂无提示词", promptCopied: "已复制提示词", copyFailed: "复制失败", loadFailedRetry: "加载失败，点击重试", noMatchingPrompts: "无匹配提示词", sourceEmpty: "该来源暂无提示词", viewDetails: "查看详情",
             filter: { image: "图片", video: "视频", text: "文本", audio: "音频", config: "配置", group: "分组" },
             switchPill: "切换为胶囊导航", switchClassic: "切换为经典导航",
+            galleryAssets: "画廊素材", noGalleryAssets: "画廊暂无作品",
+            personalPrompts: "个人提示词", systemPrompts: "系统提示词", addPrompt: "添加提示词", promptTitle: "标题（可选）", promptContent: "提示词内容", savePrompt: "保存", promptRequired: "请填写提示词内容", promptAdded: "已添加到个人提示词", promptRemoved: "提示词已删除", noPersonalPrompts: "还没有个人提示词，点右上角 + 添加", removePromptTitle: "删除这条个人提示词？", removePrompt: "删除提示词",
         },
         pill: { newNode: "新建节点" },
         guide: {
