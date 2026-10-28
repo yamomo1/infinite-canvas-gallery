@@ -669,7 +669,7 @@ export default {
             applied: "Applied {{count}} canvas change(s)",
             opsReady: "Model wants to apply {{count}} canvas change(s)",
             apply: "Apply to canvas",
-            setupHint: "No model configured yet: click here to fill in your New API base URL (https://your-domain/v1) and token, then pick a text model."
+            setupHint: "No model yet: signing in attaches the site API automatically. Click here to configure manually."
         },
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },
         state: { ready: "Ready", connectionRequired: "Enter the Local URL and Connect token", invalidUrl: "The Local URL is invalid", offline: "Offline", skillReadFailed: "Failed to read Skill", skillParseFailed: "Failed to parse Skill", requestFailed: "Local Agent request failed" },

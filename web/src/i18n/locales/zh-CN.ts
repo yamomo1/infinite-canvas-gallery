@@ -669,7 +669,7 @@ export default {
             applied: "已应用 {{count}} 项画布改动",
             opsReady: "模型想执行 {{count}} 项画布改动",
             apply: "应用到画布",
-            setupHint: "还没配置模型：点这里填 New API 地址（https://你的域名/v1）和令牌，再选一个文本模型。"
+            setupHint: "还没接入模型：登录后会自动接入本站 API；也可以点这里手动填地址和令牌。"
         },
         status: { failed: "连接失败", connected: "已连接", connecting: "连接中", disconnected: "未连接" },
         state: { ready: "就绪", connectionRequired: "请填写 Local URL 和 Connect token", invalidUrl: "Local URL 格式不正确", offline: "离线", skillReadFailed: "读取 Skill 失败", skillParseFailed: "Skill 解析失败", requestFailed: "本地 Agent 请求失败" },

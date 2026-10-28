@@ -74,4 +74,12 @@ export async function getSelf(): Promise<NewApiSelfUser> {
     return apiRequest<NewApiSelfUser>("/user/self");
 }
 
+// 画布工作台凭证：后端自动创建（或复用）本人的「Canvas Studio」令牌，
+// 前端拿 base_url + token 直接调 /v1/*，用量计入用户自己的额度。
+export type NewApiCanvasSession = { token: string; base_url: string };
+
+export async function getCanvasSession(): Promise<NewApiCanvasSession> {
+    return apiRequest<NewApiCanvasSession>("/canvas/v1/session");
+}
+
 export { NEWAPI_BASE };

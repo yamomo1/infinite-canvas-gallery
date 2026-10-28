@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { ClientRootInit } from "@/components/layout/client-root-init";
 import { UserLoginModal } from "@/components/layout/user-login-modal";
 import { useCanvasCloudSync } from "@/hooks/use-canvas-cloud-sync";
+import { useNewApiStudio } from "@/hooks/use-newapi-studio";
 import type { AppLocale } from "@/i18n";
 import { getAntThemeConfig } from "@/lib/app-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -33,6 +34,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const locale = i18n.resolvedLanguage as AppLocale;
 
     useCanvasCloudSync();
+    useNewApiStudio();
 
     useEffect(() => {
         document.documentElement.classList.toggle("dark", dark);
