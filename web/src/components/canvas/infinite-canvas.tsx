@@ -15,11 +15,13 @@ type InfiniteCanvasProps = {
     onCanvasDoubleClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onCanvasContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onContextMenu?: (event: React.MouseEvent) => void;
+    /** 程序性视口移动（如节点居中）的过渡动效；拖拽/滚轮时不传，保证跟手 */
+    viewportTransition?: string;
     onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
     children: React.ReactNode;
 };
 
-export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onCanvasContextMenu, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
+export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onCanvasContextMenu, onContextMenu, viewportTransition, onDrop, children }: InfiniteCanvasProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const panState = useRef({
         isPanning: false,
@@ -235,6 +237,7 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
                 className="absolute origin-top-left"
                 style={{
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.k})`,
+                    transition: viewportTransition,
                 }}
             >
                 {children}

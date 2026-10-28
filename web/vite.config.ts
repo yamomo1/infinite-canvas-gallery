@@ -61,4 +61,14 @@ export default defineConfig({
             },
         },
     },
+    preview: {
+        // Same proxy for `vite preview`, so the production bundle can be smoke
+        // tested against a real backend before it is deployed.
+        proxy: {
+            "/api": {
+                target: process.env.VITE_NEWAPI_PROXY_TARGET || "http://127.0.0.1:3007",
+                changeOrigin: true,
+            },
+        },
+    },
 });

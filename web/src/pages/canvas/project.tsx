@@ -633,11 +633,14 @@ function InfiniteCanvasPage() {
         [getCanvasCenter],
     );
 
-    // dock「+」创建：平移视口让新节点居中（保持当前缩放；position 即节点中心）
+    // dock「+」创建：平移视口让新节点居中（保持当前缩放；position 即节点中心），带平滑动效
+    const [viewportTransition, setViewportTransition] = useState<string | undefined>(undefined);
     const centerViewportOnNode = useCallback((position: Position) => {
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
+        setViewportTransition("transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)");
         setViewport((prev) => ({ ...prev, x: rect.width / 2 - position.x * prev.k, y: rect.height / 2 - position.y * prev.k }));
+        window.setTimeout(() => setViewportTransition(undefined), 360);
     }, []);
 
     const setConnecting = useCallback((next: ConnectionHandle | null) => {
@@ -3282,6 +3285,7 @@ function InfiniteCanvasPage() {
                         setNodeCreatePosition(screenToCanvas(event.clientX, event.clientY));
                     }}
                     onContextMenu={preventCanvasContextMenu}
+                    viewportTransition={viewportTransition}
                     onDrop={handleDrop}
                 >
                     <svg className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible" style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 0 }}>

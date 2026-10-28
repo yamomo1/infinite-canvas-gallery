@@ -75,12 +75,16 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mode]);
 
-    // 胶囊模式：点击 dock / 面板卡片以外的区域（画布、顶栏等）自动收起面板
+    // 胶囊模式：点击 dock / 面板卡片以外的区域（画布、顶栏等）自动收起面板。
+    // antd 弹层（Popconfirm / Modal / Select 下拉等）挂在 body portal 上，
+    // 与它们的交互（确认删除、填写弹窗表单）不算「外部点击」。
     useEffect(() => {
         if (mode !== "pill" || !panelOpen) return;
         const onPointerDown = (event: PointerEvent) => {
             const target = event.target instanceof Element ? event.target : null;
-            if (!target || target.closest("[data-pill-root]")) return;
+            if (!target) return;
+            if (target.closest("[data-pill-root]")) return;
+            if (target.closest(".ant-popover, .ant-modal-root, .ant-modal-mask, .ant-select-dropdown, .ant-dropdown, .ant-tooltip, .ant-message, .ant-notification")) return;
             closePanel();
         };
         document.addEventListener("pointerdown", onPointerDown, true);
@@ -781,7 +785,7 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
             message.warning(t("canvas.sidePanel.promptRequired"));
             return;
         }
-        addPersonalPrompt(draftTitle, draftPrompt, draftCategory[0]);
+        addPersonalPrompt(draftTitle, draftPrompt, draftCategory);
         setDraftTitle("");
         setDraftPrompt("");
         setDraftCategory([]);
@@ -789,15 +793,19 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
         message.success(t("canvas.sidePanel.promptAdded"));
     };
 
-    // 个人提示词按分类分组：默认分类（人物/场景/风格/其他）优先，自定义分类按出现顺序跟在后面
+    // 个人提示词按分类分组：一条提示词可属多个分类，会在每个分类组里出现。
+    // 默认分类（人物/场景/风格/其他）优先，自定义分类按出现顺序跟在后面。
     const categoryOptions = useMemo(() => [...PERSONAL_PROMPT_CATEGORIES, ...collectCustomCategories(personalPrompts)], [personalPrompts]);
     const personalGroups = useMemo(() => {
         const order = [...PERSONAL_PROMPT_CATEGORIES, ...collectCustomCategories(personalPrompts)];
         const map = new Map<string, PersonalPrompt[]>();
         for (const item of filteredPersonal) {
-            const category = item.category?.trim() || PERSONAL_PROMPT_UNCATEGORIZED;
-            if (!map.has(category)) map.set(category, []);
-            map.get(category)!.push(item);
+            const categories = item.categories?.length ? item.categories : [PERSONAL_PROMPT_UNCATEGORIZED];
+            for (const raw of categories) {
+                const category = raw || PERSONAL_PROMPT_UNCATEGORIZED;
+                if (!map.has(category)) map.set(category, []);
+                map.get(category)!.push(item);
+            }
         }
         const keys = [...map.keys()].sort((a, b) => {
             const ia = order.indexOf(a);
@@ -913,7 +921,6 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                     <Input size="large" placeholder={t("canvas.sidePanel.promptTitle")} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={60} />
                     <Select
                         mode="tags"
-                        maxCount={1}
                         size="large"
                         className="w-full"
                         placeholder={t("canvas.sidePanel.promptCategoryPlaceholder")}

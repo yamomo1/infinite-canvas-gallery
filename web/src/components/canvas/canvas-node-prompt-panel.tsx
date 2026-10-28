@@ -89,7 +89,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const submitSavePrompt = () => {
         const text = prompt.trim();
         if (!text) return;
-        addPersonalPrompt(saveTitle, text, saveCategory[0]);
+        addPersonalPrompt(saveTitle, text, saveCategory);
         setSaveDialogOpen(false);
         message.success(t("canvas.promptPanel.promptSaved"));
     };
@@ -213,7 +213,6 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         <div className="mb-1.5 text-xs font-medium opacity-60">{t("canvas.sidePanel.promptCategory")}</div>
                         <Select
                             mode="tags"
-                            maxCount={1}
                             className="w-full"
                             placeholder={t("canvas.sidePanel.promptCategoryPlaceholder")}
                             value={saveCategory}
