@@ -283,6 +283,7 @@ export default {
             filter: { image: "图片", video: "视频", text: "文本", audio: "音频", config: "配置", group: "分组" },
             switchPill: "切换为胶囊导航", switchClassic: "切换为经典导航",
             galleryAssets: "画廊素材", noGalleryAssets: "画廊暂无作品",
+            galleryAll: "全部作品", galleryFavorites: "已收藏", loginForFavorites: "登录后即可看到你在画廊收藏的作品", noFavoriteAssets: "还没有收藏的图片或视频",
             personalPrompts: "个人提示词", systemPrompts: "系统提示词", addPrompt: "添加提示词", promptTitle: "标题（可选）", promptContent: "提示词内容", savePrompt: "保存", promptRequired: "请填写提示词内容", promptAdded: "已添加到个人提示词", promptRemoved: "提示词已删除", noPersonalPrompts: "还没有个人提示词，点右上角 + 添加", removePromptTitle: "删除这条个人提示词？", removePrompt: "删除提示词",
             addPromptHint: "保存后会出现在「个人提示词」列表中，可随时插入画布或编辑。",
             promptCategory: "分类", promptCategoryPlaceholder: "选择或输入分类，如：人物 / 场景 / 风格 / 其他", promptTitlePlaceholder: "不填则自动取提示词开头作为标题",

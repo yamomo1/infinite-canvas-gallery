@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { App, Empty, Input, Modal, Popconfirm, Select, Spin, Tag } from "antd";import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Globe, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, User, Video, X } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Globe, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Star, Trash2, Type, User, Video, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,7 @@ import { exportCanvasNodes } from "@/lib/canvas/canvas-export";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { cn } from "@/lib/utils";
 import { PromptDetailDialog } from "@/pages/prompts/components/prompt-detail-dialog";
-import { fetchGalleryMedia, type GalleryMediaItem } from "@/services/api/gallery-media";
+import { fetchFavoriteGalleryMedia, fetchGalleryMedia, hasGallerySession, type GalleryMediaItem } from "@/services/api/gallery-media";
 import { fetchSourcePrompts, type Prompt } from "@/services/api/prompts";
 import { uploadMediaFile } from "@/services/file-storage";
 import { previewUrlFor, subscribeImagePreviews, getImagePreviewRevision, uploadImage } from "@/services/image-storage";
@@ -544,9 +544,21 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
     const groups = useMemo(() => ASSET_GROUPS.map((group) => ({ ...group, items: filtered.filter((asset) => asset.kind === group.kind) })).filter((group) => group.items.length > 0), [filtered]);
 
     // 画廊素材：New API 提示词画廊收录的图片/视频作品，点击直接插入画布
-    const galleryQuery = useQuery({ queryKey: ["canvas-gallery-media"], queryFn: () => fetchGalleryMedia(100), staleTime: 1000 * 60 * 10, refetchOnWindowFocus: false, retry: 1 });
     const [galleryCollapsed, setGalleryCollapsed] = useState(false);
-    const galleryItems = galleryQuery.data || [];
+    const [galleryScope, setGalleryScope] = useState<"all" | "favorites">("all");
+    const galleryQuery = useQuery({ queryKey: ["canvas-gallery-media"], queryFn: () => fetchGalleryMedia(100), staleTime: 1000 * 60 * 10, refetchOnWindowFocus: false, retry: 1 });
+    // 我收藏的作品：画廊页收藏后落库，这里跨端直接可见（需登录）
+    const favoriteGalleryQuery = useQuery({
+        queryKey: ["canvas-gallery-favorites"],
+        queryFn: () => fetchFavoriteGalleryMedia(100),
+        enabled: galleryScope === "favorites",
+        staleTime: 1000 * 60 * 2,
+        refetchOnWindowFocus: false,
+        retry: 1,
+    });
+    const activeGalleryQuery = galleryScope === "favorites" ? favoriteGalleryQuery : galleryQuery;
+    const galleryItems = activeGalleryQuery.data || [];
+    const galleryNeedsLogin = galleryScope === "favorites" && !hasGallerySession();
 
     const insertGalleryMedia = async (item: GalleryMediaItem) => {
         if (item.type === "video") {
@@ -637,12 +649,32 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                 </button>
                 {galleryCollapsed ? null : (
                     <div className="px-1 pb-2 pt-1">
-                        {galleryQuery.isLoading ? (
+                        {/* 全部作品 / 我已收藏（收藏来自画廊页，落库后跨端同步） */}
+                        <div className="mb-2 flex items-center gap-1.5">
+                            {(["all", "favorites"] as const).map((scope) => {
+                                const active = galleryScope === scope;
+                                return (
+                                    <button
+                                        key={scope}
+                                        type="button"
+                                        onClick={() => setGalleryScope(scope)}
+                                        className={cn("inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium transition", active ? "bg-black/[0.06] dark:bg-white/[0.12]" : "opacity-55 hover:opacity-100")}
+                                        style={{ color: theme.node.text }}
+                                    >
+                                        {scope === "favorites" ? <Star className={cn("size-3", active && "fill-current")} /> : <Globe className="size-3" />}
+                                        {t(scope === "all" ? "canvas.sidePanel.galleryAll" : "canvas.sidePanel.galleryFavorites")}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {galleryNeedsLogin ? (
+                            <div className="px-1 py-3 text-center text-xs opacity-45">{t("canvas.sidePanel.loginForFavorites")}</div>
+                        ) : activeGalleryQuery.isLoading ? (
                             <div className="flex justify-center py-4">
                                 <Spin size="small" />
                             </div>
-                        ) : galleryQuery.isError ? (
-                            <button type="button" onClick={() => void galleryQuery.refetch()} className="block w-full py-3 text-center text-xs text-red-500 opacity-80 transition hover:opacity-100">
+                        ) : activeGalleryQuery.isError ? (
+                            <button type="button" onClick={() => void activeGalleryQuery.refetch()} className="block w-full py-3 text-center text-xs text-red-500 opacity-80 transition hover:opacity-100">
                                 {t("canvas.sidePanel.loadFailedRetry")}
                             </button>
                         ) : galleryItems.length ? (
@@ -652,7 +684,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                                 ))}
                             </div>
                         ) : (
-                            <div className="py-3 text-center text-xs opacity-40">{t("canvas.sidePanel.noGalleryAssets")}</div>
+                            <div className="py-3 text-center text-xs opacity-40">{t(galleryScope === "favorites" ? "canvas.sidePanel.noFavoriteAssets" : "canvas.sidePanel.noGalleryAssets")}</div>
                         )}
                     </div>
                 )}
@@ -721,12 +753,14 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
 
 function GalleryMediaCard({ item, theme, onInsert }: { item: GalleryMediaItem; theme: CanvasTheme; onInsert: () => void }) {
     const { t } = useTranslation();
+    // 视频地址不是可直接播放的媒体文件时（如仅存封面图），退化为封面缩略图
+    const playable = item.type === "video" && /^(data:video\/|.*\.(mp4|webm|mov|m3u8)(\?|$))/i.test(item.url);
     return (
         <div className="group relative aspect-square overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" style={{ borderColor: theme.node.stroke, background: theme.node.panel }} title={item.title}>
-            {item.type === "video" ? (
+            {playable ? (
                 <video src={`${item.url}#t=0.1`} muted playsInline preload="metadata" className="size-full object-cover" />
             ) : (
-                <img src={item.url} alt={item.title} loading="lazy" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />
+                <img src={item.poster || item.url} alt={item.title} loading="lazy" className="size-full object-cover transition duration-300 group-hover:scale-[1.04]" />
             )}
             <span className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1 py-0.5 text-[10px] font-medium text-white opacity-0 transition group-hover:opacity-100">{item.type === "video" ? t("assets.kinds.video") : t("assets.kinds.image")}</span>
             <div className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-200 group-hover:opacity-100">

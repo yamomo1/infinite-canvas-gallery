@@ -283,6 +283,7 @@ export default {
             filter: { image: "Image", video: "Video", text: "Text", audio: "Audio", config: "Configuration", group: "Group" },
             switchPill: "Switch to pill dock", switchClassic: "Switch to classic panel",
             galleryAssets: "Gallery assets", noGalleryAssets: "No gallery works yet",
+            galleryAll: "All works", galleryFavorites: "Favorites", loginForFavorites: "Sign in to see the works you favorited in the gallery", noFavoriteAssets: "No favorited images or videos yet",
             personalPrompts: "My prompts", systemPrompts: "System prompts", addPrompt: "Add prompt", promptTitle: "Title (optional)", promptContent: "Prompt content", savePrompt: "Save", promptRequired: "Prompt content is required", promptAdded: "Saved to My prompts", promptRemoved: "Prompt removed", noPersonalPrompts: "No personal prompts yet. Click + to add one.", removePromptTitle: "Delete this personal prompt?", removePrompt: "Delete prompt",
             addPromptHint: "Saved prompts appear in \"My prompts\" and can be inserted into the canvas anytime.",
             promptCategory: "Category", promptCategoryPlaceholder: "Pick or type a category, e.g. Character / Scene / Style / Other", promptTitlePlaceholder: "Leave empty to use the start of the prompt as title",
