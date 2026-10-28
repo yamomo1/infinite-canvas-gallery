@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowUp, LoaderCircle, Maximize2, Square } from "lucide-react";
-import { Button, Modal, Tooltip } from "antd";
+import { ArrowUp, BookmarkPlus, LoaderCircle, Maximize2, Square } from "lucide-react";
+import { App, Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+import { usePersonalPromptStore } from "@/stores/use-personal-prompts-store";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
@@ -37,6 +38,8 @@ type CanvasNodePromptPanelProps = {
 
 export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, onConfigChange, onGenerate, onStop, mentionReferences = [], connectedNodes = [], onDisconnectReference, onStartReferenceSelection, onImageSettingsOpenChange, modeOverride }: CanvasNodePromptPanelProps) {
     const { t } = useTranslation();
+    const { message } = App.useApp();
+    const addPersonalPrompt = usePersonalPromptStore((state) => state.addPrompt);
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
@@ -70,6 +73,13 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
         setExpanded(true);
     };
 
+    const savePromptToPersonal = () => {
+        const text = prompt.trim();
+        if (!text) return;
+        addPersonalPrompt("", text);
+        message.success(t("canvas.promptPanel.promptSaved"));
+    };
+
     return (
         <div
             data-canvas-no-zoom
@@ -95,6 +105,11 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                     <Tooltip title={t("canvas.promptPanel.expandEditor")}>
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
                     </Tooltip>
+                    {prompt.trim() ? (
+                        <Tooltip title={t("canvas.promptPanel.savePrompt")}>
+                            <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<BookmarkPlus className="size-3.5" />} onClick={savePromptToPersonal} aria-label={t("canvas.promptPanel.savePrompt")} />
+                        </Tooltip>
+                    ) : null}
                     <CanvasPromptLibrary onSelect={updatePrompt} />
                     {mode === "image" ? (
                         <>
@@ -157,6 +172,11 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         style={{ background: "transparent", borderColor: theme.toolbar.border, color: theme.node.text }}
                         placeholder={t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)}
                     />
+                    <div className="flex justify-end pt-2">
+                        <Button type="text" className="!rounded-full" style={{ color: theme.node.text }} icon={<BookmarkPlus className="size-4" />} disabled={!prompt.trim()} onClick={savePromptToPersonal}>
+                            {t("canvas.promptPanel.savePrompt")}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

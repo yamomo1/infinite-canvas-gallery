@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
+import { App, Empty, Input, Modal, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Globe, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, User, Video, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -760,7 +760,6 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
     const [draftTitle, setDraftTitle] = useState("");
     const [draftPrompt, setDraftPrompt] = useState("");
     const [detail, setDetail] = useState<Prompt | null>(null);
-
     const copyPrompt = async (prompt: string) => {
         try {
             await navigator.clipboard.writeText(prompt);
@@ -806,12 +805,12 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                                 tabIndex={0}
                                 onClick={(event) => {
                                     event.stopPropagation();
-                                    setAdding((prev) => !prev);
+                                    setAdding(true);
                                 }}
                                 onKeyDown={(event) => {
                                     if (event.key === "Enter" || event.key === " ") {
                                         event.stopPropagation();
-                                        setAdding((prev) => !prev);
+                                        setAdding(true);
                                     }
                                 }}
                                 className="grid size-5 place-items-center rounded transition hover:bg-black/10 dark:hover:bg-white/10"
@@ -824,20 +823,6 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                     </button>
                     {personalExpanded ? (
                         <div className="px-1 pb-2 pt-1">
-                            {adding ? (
-                                <div className="mb-2 space-y-1.5 rounded-lg border p-2" style={{ borderColor: theme.toolbar.border, background: theme.node.panel }}>
-                                    <Input size="small" placeholder={t("canvas.sidePanel.promptTitle")} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={60} />
-                                    <Input.TextArea size="small" placeholder={t("canvas.sidePanel.promptContent")} value={draftPrompt} onChange={(e) => setDraftPrompt(e.target.value)} autoSize={{ minRows: 3, maxRows: 8 }} maxLength={4000} />
-                                    <div className="flex justify-end gap-1.5">
-                                        <button type="button" onClick={() => setAdding(false)} className="rounded-md px-2.5 py-1 text-xs font-medium opacity-70 transition hover:opacity-100">
-                                            {t("common.cancel")}
-                                        </button>
-                                        <button type="button" onClick={submitPersonal} className="rounded-md px-2.5 py-1 text-xs font-semibold" style={{ background: theme.toolbar.activeText, color: theme.toolbar.panel }}>
-                                            {t("canvas.sidePanel.savePrompt")}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : null}
                             {filteredPersonal.length ? (
                                 <div className="space-y-1.5">
                                     {filteredPersonal.map((item) => (
@@ -862,7 +847,7 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                                         </div>
                                     ))}
                                 </div>
-                            ) : adding ? null : (
+                            ) : (
                                 <div className="py-4 text-center text-xs opacity-40">{keyword.trim() ? t("canvas.sidePanel.noMatchingPrompts") : t("canvas.sidePanel.noPersonalPrompts")}</div>
                             )}
                         </div>
@@ -888,6 +873,33 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                 </div>
             </div>
             <PromptDetailDialog prompt={detail} onClose={() => setDetail(null)} onCopy={(prompt) => void copyPrompt(prompt)} />
+            <Modal
+                title={<span className="text-base font-semibold">{t("canvas.sidePanel.addPrompt")}</span>}
+                open={adding}
+                centered
+                width={640}
+                okText={t("canvas.sidePanel.savePrompt")}
+                cancelText={t("common.cancel")}
+                okButtonProps={{ disabled: !draftPrompt.trim(), className: "!rounded-full !px-6" }}
+                cancelButtonProps={{ className: "!rounded-full !px-6" }}
+                onOk={submitPersonal}
+                onCancel={() => setAdding(false)}
+                destroyOnHidden
+            >
+                <div className="space-y-3 pt-2" onWheelCapture={(event) => event.stopPropagation()}>
+                    <Input size="large" placeholder={t("canvas.sidePanel.promptTitle")} value={draftTitle} onChange={(e) => setDraftTitle(e.target.value)} maxLength={60} />
+                    <Input.TextArea
+                        size="large"
+                        placeholder={t("canvas.sidePanel.promptContent")}
+                        value={draftPrompt}
+                        onChange={(e) => setDraftPrompt(e.target.value)}
+                        autoSize={{ minRows: 10, maxRows: 16 }}
+                        maxLength={8000}
+                        className="!text-[15px] !leading-6"
+                    />
+                    <div className="text-xs opacity-45">{t("canvas.sidePanel.addPromptHint")}</div>
+                </div>
+            </Modal>
         </div>
     );
 });

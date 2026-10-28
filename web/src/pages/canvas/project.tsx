@@ -3173,10 +3173,22 @@ function InfiniteCanvasPage() {
                 onHoverNode={setHoverPreviewNodeId}
                 onInsertAsset={handleAssetInsert}
                 onAddNodeAtCenter={() => {
+                    // 菜单贴着胶囊「+」按钮弹出；找不到按钮时退化为画布中心
+                    const plus = document.querySelector<HTMLButtonElement>('button[aria-label="新建节点"]');
                     const rect = containerRef.current?.getBoundingClientRect();
-                    if (!rect) return;
+                    let sx: number | null = null;
+                    let sy: number | null = null;
+                    if (plus) {
+                        const pr = plus.getBoundingClientRect();
+                        sx = pr.right + 14;
+                        sy = pr.top + pr.height / 2;
+                    } else if (rect) {
+                        sx = rect.left + rect.width / 2;
+                        sy = rect.top + rect.height / 2;
+                    }
+                    if (sx === null || sy === null) return;
                     setContextMenu(null);
-                    setNodeCreatePosition(screenToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2));
+                    setNodeCreatePosition(screenToCanvas(sx, sy));
                 }}
             />
             <section className="relative min-w-0 flex-1 overflow-hidden">
