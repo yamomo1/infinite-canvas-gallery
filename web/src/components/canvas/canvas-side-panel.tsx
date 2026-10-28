@@ -1,8 +1,8 @@
-import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { App, Empty, Input, Popconfirm, Select, Spin, Tag } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, Check, ChevronRight, Download, Eye, FileText, Image as ImageIcon, LayoutGrid, ListChecks, Music2, Plus, Rows3, Search, Settings2, Square, Trash2, Type, Video } from "lucide-react";
-import { motion } from "motion/react";
+import { BookOpen, Check, ChevronRight, Download, Eye, FileText, FolderOpen, Image as ImageIcon, Layers, LayoutGrid, ListChecks, Music2, PanelLeft, Plus, Rows3, Search, Settings2, Square, Trash2, Type, Video, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
@@ -24,8 +24,6 @@ import type { InsertAssetPayload } from "./asset-picker-modal";
 const PANEL_MOTION_SECONDS = CANVAS_SIDE_PANEL_MOTION_MS / 1000;
 const PANEL_EASE = [0.22, 1, 0.36, 1] as const;
 
-type PanelTab = "canvas" | "assets" | "prompts";
-
 type Props = {
     nodes: CanvasNodeData[];
     selectedNodeIds: Set<string>;
@@ -33,6 +31,8 @@ type Props = {
     onPreviewNode: (nodeId: string) => void;
     onHoverNode: (nodeId: string | null) => void;
     onInsertAsset: (payload: InsertAssetPayload) => void;
+    /** 胶囊导航「+」：在画布中心弹出节点创建菜单 */
+    onAddNodeAtCenter?: () => void;
 };
 
 const NODE_TYPE_ICON: Record<string, typeof Square> = {
@@ -51,36 +51,117 @@ const STATUS_COLOR: Record<string, string> = {
     idle: "transparent",
 };
 
-export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, onHoverNode, onInsertAsset }: Props) {
+export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreviewNode, onHoverNode, onInsertAsset, onAddNodeAtCenter }: Props) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const [tab, setTab] = useState<PanelTab>("canvas");
+    const mode = useCanvasSidePanelStore((state) => state.mode);
+    const setMode = useCanvasSidePanelStore((state) => state.setMode);
+    const tab = useCanvasSidePanelStore((state) => state.tab);
+    const setTab = useCanvasSidePanelStore((state) => state.setTab);
+    const toggleTab = useCanvasSidePanelStore((state) => state.toggleTab);
     const width = useCanvasSidePanelStore((state) => state.width);
     const panelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
     const panelMounted = useCanvasSidePanelStore((state) => state.panelMounted);
     const panelClosing = useCanvasSidePanelStore((state) => state.panelClosing);
     const setWidth = useCanvasSidePanelStore((state) => state.setWidth);
+    const closePanel = useCanvasSidePanelStore((state) => state.closePanel);
     const [resizing, setResizing] = useState(false);
 
-    const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
-        event.preventDefault();
-        const startX = event.clientX;
-        const startWidth = width;
-        let nextWidth = startWidth;
-        const onMove = (moveEvent: PointerEvent) => {
-            nextWidth = Math.min(CANVAS_SIDE_PANEL_MAX_WIDTH, Math.max(CANVAS_SIDE_PANEL_MIN_WIDTH, startWidth + moveEvent.clientX - startX));
-            setWidth(nextWidth);
-        };
-        const onUp = () => {
-            localStorage.setItem("canvas-side-panel-width", String(nextWidth));
-            window.removeEventListener("pointermove", onMove);
-            window.removeEventListener("pointerup", onUp);
-            setResizing(false);
-        };
-        setResizing(true);
-        window.addEventListener("pointermove", onMove);
-        window.addEventListener("pointerup", onUp);
-    };
+    // 胶囊模式首次使用（从未手动开关过面板）默认只展示 dock，不展开面板
+    useEffect(() => {
+        if (mode !== "pill") return;
+        if (typeof window !== "undefined" && localStorage.getItem("canvas-side-panel-open") === null) closePanel();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode]);
+
+    const body = (
+        <>
+            <div className="flex items-center gap-4 px-4 pt-3.5">
+                <TabButton label={t("canvas.sidePanel.canvas")} active={tab === "canvas"} theme={theme} onClick={() => setTab("canvas")} />
+                <TabButton label={t("canvas.sidePanel.assets")} active={tab === "assets"} theme={theme} onClick={() => setTab("assets")} />
+                <TabButton label={t("canvas.sidePanel.prompts")} active={tab === "prompts"} theme={theme} onClick={() => setTab("prompts")} />
+                {mode === "classic" ? (
+                    <button
+                        type="button"
+                        onClick={() => setMode("pill")}
+                        className="ml-auto flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                        title={t("canvas.sidePanel.switchPill")}
+                        aria-label={t("canvas.sidePanel.switchPill")}
+                    >
+                        <PanelLeft className="size-3.5" />
+                        {t("canvas.sidePanel.switchPill")}
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={closePanel}
+                        className="ml-auto grid size-7 shrink-0 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                        title={t("canvas.collapsePanel")}
+                        aria-label={t("canvas.collapsePanel")}
+                    >
+                        <X className="size-4" />
+                    </button>
+                )}
+            </div>
+            <div className="mt-2 min-h-0 flex-1 overflow-hidden">
+                {tab === "canvas" ? (
+                    <CanvasNodesTab nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={onFocusNode} onPreviewNode={onPreviewNode} onHoverNode={onHoverNode} theme={theme} />
+                ) : tab === "assets" ? (
+                    <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
+                ) : (
+                    <CanvasPromptsTab onInsert={onInsertAsset} theme={theme} />
+                )}
+            </div>
+        </>
+    );
+
+    if (mode === "pill") {
+        return (
+            <>
+                <div className="pointer-events-none absolute inset-y-0 left-0 z-[70] flex w-16 items-center" data-canvas-no-zoom>
+                    <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-full border p-1.5 shadow-xl" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
+                        <DockButton label={t("canvas.pill.newNode")} accent theme={theme} onClick={onAddNodeAtCenter}>
+                            <Plus className="size-4" />
+                        </DockButton>
+                        <DockButton label={t("canvas.sidePanel.canvas")} theme={theme} active={panelOpen && tab === "canvas"} onClick={() => toggleTab("canvas")}>
+                            <Layers className="size-4" />
+                        </DockButton>
+                        <DockButton label={t("canvas.sidePanel.assets")} theme={theme} active={panelOpen && tab === "assets"} onClick={() => toggleTab("assets")}>
+                            <FolderOpen className="size-4" />
+                        </DockButton>
+                        <DockButton label={t("canvas.sidePanel.prompts")} theme={theme} active={panelOpen && tab === "prompts"} onClick={() => toggleTab("prompts")}>
+                            <BookOpen className="size-4" />
+                        </DockButton>
+                        <span className="my-0.5 h-px w-6 shrink-0" style={{ background: theme.toolbar.border }} />
+                        <DockButton label={t("canvas.sidePanel.switchClassic")} theme={theme} onClick={() => setMode("classic")}>
+                            <PanelLeft className="size-4" />
+                        </DockButton>
+                    </div>
+                </div>
+                <AnimatePresence>
+                    {panelMounted ? (
+                        <motion.div
+                            key="pill-panel"
+                            className="pointer-events-none absolute inset-y-0 left-16 z-[65] flex items-center"
+                            initial={{ opacity: 0, x: -16 }}
+                            animate={{ opacity: panelOpen ? 1 : 0, x: panelClosing ? -12 : 0 }}
+                            exit={{ opacity: 0, x: -16 }}
+                            transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: PANEL_EASE }}
+                        >
+                            <div
+                                className="pointer-events-auto relative flex flex-col overflow-hidden rounded-2xl border shadow-2xl"
+                                style={{ width, height: "min(640px, calc(100% - 6rem))", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
+                                data-canvas-no-zoom
+                            >
+                                {body}
+                                <button type="button" className="absolute inset-y-0 right-0 z-40 w-3 translate-x-1/2 cursor-col-resize" onPointerDown={(event) => beginResize(event, width, setWidth, setResizing)} aria-label={t("canvas.sidePanel.resize")} />
+                            </div>
+                        </motion.div>
+                    ) : null}
+                </AnimatePresence>
+            </>
+        );
+    }
 
     if (!panelMounted) return null;
 
@@ -100,23 +181,48 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                 style={{ width, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
                 data-canvas-no-zoom
             >
-                <div className="flex items-center gap-5 px-4 pt-3.5">
-                    <TabButton label={t("canvas.sidePanel.canvas")} active={tab === "canvas"} theme={theme} onClick={() => setTab("canvas")} />
-                    <TabButton label={t("canvas.sidePanel.assets")} active={tab === "assets"} theme={theme} onClick={() => setTab("assets")} />
-                    <TabButton label={t("canvas.sidePanel.prompts")} active={tab === "prompts"} theme={theme} onClick={() => setTab("prompts")} />
-                </div>
-                <div className="mt-2 min-h-0 flex-1 overflow-hidden">
-                    {tab === "canvas" ? (
-                        <CanvasNodesTab nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={onFocusNode} onPreviewNode={onPreviewNode} onHoverNode={onHoverNode} theme={theme} />
-                    ) : tab === "assets" ? (
-                        <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
-                    ) : (
-                        <CanvasPromptsTab onInsert={onInsertAsset} theme={theme} />
-                    )}
-                </div>
-                <button type="button" className="absolute inset-y-0 right-0 z-40 w-4 translate-x-1/2 cursor-col-resize" onPointerDown={startResize} aria-label={t("canvas.sidePanel.resize")} />
+                {body}
+                <button type="button" className="absolute inset-y-0 right-0 z-40 w-4 translate-x-1/2 cursor-col-resize" onPointerDown={(event) => beginResize(event, width, setWidth, setResizing)} aria-label={t("canvas.sidePanel.resize")} />
             </motion.aside>
         </motion.div>
+    );
+}
+
+function beginResize(event: ReactPointerEvent<HTMLButtonElement>, width: number, setWidth: (width: number) => void, setResizing: (value: boolean) => void) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = width;
+    let nextWidth = startWidth;
+    const onMove = (moveEvent: PointerEvent) => {
+        nextWidth = Math.min(CANVAS_SIDE_PANEL_MAX_WIDTH, Math.max(CANVAS_SIDE_PANEL_MIN_WIDTH, startWidth + moveEvent.clientX - startX));
+        setWidth(nextWidth);
+    };
+    const onUp = () => {
+        localStorage.setItem("canvas-side-panel-width", String(nextWidth));
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        setResizing(false);
+    };
+    setResizing(true);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+}
+
+function DockButton({ label, children, active, accent, theme, onClick }: { label: string; children: ReactNode; active?: boolean; accent?: boolean; theme: CanvasTheme; onClick?: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title={label}
+            aria-label={label}
+            className={cn("grid size-9 shrink-0 place-items-center rounded-full transition duration-150", accent || active ? "" : "opacity-70 hover:opacity-100")}
+            style={{
+                background: accent ? theme.toolbar.activeText : active ? theme.toolbar.activeBg : "transparent",
+                color: accent ? theme.toolbar.panel : active ? theme.toolbar.activeText : theme.node.text,
+            }}
+        >
+            {children}
+        </button>
     );
 }
 

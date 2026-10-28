@@ -8,8 +8,12 @@ export const CANVAS_SIDE_PANEL_DEFAULT_WIDTH = 280;
 const WIDTH_KEY = "canvas-side-panel-width";
 const OPEN_KEY = "canvas-side-panel-open";
 const NODE_VIEW_KEY = "canvas-side-panel-node-view";
+const MODE_KEY = "canvas-side-panel-mode";
 
 export type CanvasNodeViewMode = "list" | "grid";
+export type CanvasSidePanelTab = "canvas" | "assets" | "prompts";
+/** pill = 左侧浮动胶囊导航（默认）；classic = 经典整列侧栏 */
+export type CanvasSidePanelMode = "pill" | "classic";
 
 function initialWidth() {
     if (typeof window === "undefined") return CANVAS_SIDE_PANEL_DEFAULT_WIDTH;
@@ -28,17 +32,28 @@ function initialNodeView(): CanvasNodeViewMode {
     return localStorage.getItem(NODE_VIEW_KEY) === "grid" ? "grid" : "list";
 }
 
+function initialMode(): CanvasSidePanelMode {
+    if (typeof window === "undefined") return "pill";
+    return localStorage.getItem(MODE_KEY) === "classic" ? "classic" : "pill";
+}
+
 type CanvasSidePanelStore = {
     width: number;
     panelOpen: boolean;
     panelMounted: boolean;
     panelClosing: boolean;
     nodeViewMode: CanvasNodeViewMode;
+    mode: CanvasSidePanelMode;
+    tab: CanvasSidePanelTab;
     setWidth: (width: number) => void;
     setNodeViewMode: (mode: CanvasNodeViewMode) => void;
+    setMode: (mode: CanvasSidePanelMode) => void;
+    setTab: (tab: CanvasSidePanelTab) => void;
     openPanel: () => void;
     closePanel: () => void;
     togglePanel: () => void;
+    /** 胶囊导航点图标：同 tab 再点一次 = 收起，否则切 tab 并展开 */
+    toggleTab: (tab: CanvasSidePanelTab) => void;
 };
 
 export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) => ({
@@ -47,11 +62,18 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
     panelMounted: initialOpen(),
     panelClosing: false,
     nodeViewMode: initialNodeView(),
+    mode: initialMode(),
+    tab: "canvas",
     setWidth: (width) => set({ width }),
     setNodeViewMode: (mode) => {
         if (typeof window !== "undefined") localStorage.setItem(NODE_VIEW_KEY, mode);
         set({ nodeViewMode: mode });
     },
+    setMode: (mode) => {
+        if (typeof window !== "undefined") localStorage.setItem(MODE_KEY, mode);
+        set({ mode });
+    },
+    setTab: (tab) => set({ tab }),
     openPanel: () => {
         if (typeof window !== "undefined") localStorage.setItem(OPEN_KEY, "1");
         set({ panelOpen: true, panelMounted: true, panelClosing: false });
@@ -65,4 +87,12 @@ export const useCanvasSidePanelStore = create<CanvasSidePanelStore>((set, get) =
         }, CANVAS_SIDE_PANEL_MOTION_MS);
     },
     togglePanel: () => (get().panelOpen ? get().closePanel() : get().openPanel()),
+    toggleTab: (tab) => {
+        if (get().panelOpen && get().tab === tab) {
+            get().closePanel();
+            return;
+        }
+        set({ tab });
+        get().openPanel();
+    },
 }));

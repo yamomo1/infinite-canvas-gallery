@@ -13,6 +13,10 @@ type CanvasChatStore = {
     setMode: (mode: AgentPanelMode) => void;
     /** 每个画布一份对话记录（key = projectId） */
     threads: Record<string, OnlineChatMessage[]>;
+    /** 欢迎引导等外部入口要发送的一条消息（面板打开后由 OnlineCanvasChat 消费） */
+    pendingPrompt: string | null;
+    setPendingPrompt: (text: string) => void;
+    consumePendingPrompt: () => void;
     appendMessage: (projectId: string, message: OnlineChatMessage) => void;
     updateMessage: (projectId: string, id: string, patch: Partial<OnlineChatMessage>) => void;
     clearThread: (projectId: string) => void;
@@ -24,6 +28,9 @@ export const useCanvasChatStore = create<CanvasChatStore>()(
             mode: "online",
             setMode: (mode) => set({ mode }),
             threads: {},
+            pendingPrompt: null,
+            setPendingPrompt: (text) => set({ pendingPrompt: text }),
+            consumePendingPrompt: () => set({ pendingPrompt: null }),
             appendMessage: (projectId, message) =>
                 set((state) => {
                     const existing = state.threads[projectId] ?? [];
@@ -47,6 +54,6 @@ export const useCanvasChatStore = create<CanvasChatStore>()(
                     return { threads: next };
                 }),
         }),
-        { name: "infinite-canvas:canvas_chat" },
+        { name: "infinite-canvas:canvas_chat", partialize: (state) => ({ mode: state.mode, threads: state.threads }) },
     ),
 );

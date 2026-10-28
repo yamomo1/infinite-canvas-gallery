@@ -13,12 +13,13 @@ type InfiniteCanvasProps = {
     onCanvasMouseDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
     onCanvasDeselect?: () => void;
     onCanvasDoubleClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
+    onCanvasContextMenu?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onContextMenu?: (event: React.MouseEvent) => void;
     onDrop?: (event: React.DragEvent<HTMLDivElement>) => void;
     children: React.ReactNode;
 };
 
-export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
+export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onCanvasContextMenu, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const panState = useRef({
         isPanning: false,
@@ -145,6 +146,13 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         onCanvasDoubleClick?.(event);
     };
 
+    // 空白画布右键：与双击一致弹出节点创建菜单（节点/连线自身的右键已 stopPropagation，不会走到这里）
+    const handleCanvasContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest("[data-canvas-no-zoom],[data-node-id],[data-connection-id]")) return;
+        onCanvasContextMenu?.(event);
+    };
+
     useEffect(() => {
         const handlePointerMove = (event: PointerEvent) => {
             if (!panState.current.isPanning) return;
@@ -215,7 +223,10 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
             onPointerDown={handlePointerDown}
             onDoubleClick={handleDoubleClick}
             onWheel={handleWheel}
-            onContextMenu={onContextMenu}
+            onContextMenu={(event) => {
+                handleCanvasContextMenu(event);
+                onContextMenu?.(event);
+            }}
             onDragOver={(event) => event.preventDefault()}
             onDrop={onDrop}
         >

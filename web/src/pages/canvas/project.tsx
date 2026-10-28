@@ -34,6 +34,7 @@ import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components
 import { CanvasNodeUpscaleDialog, type CanvasImageUpscaleParams } from "@/components/canvas/canvas-node-upscale-dialog";
 import { buildNodeGenerationContext, buildNodeGenerationInputs, buildNodeResponseMessages, hydrateNodeGenerationContext, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
+import { CanvasWelcomeGuide } from "@/components/canvas/canvas-welcome-guide";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
@@ -44,6 +45,8 @@ import { AssetPickerModal, type InsertAssetPayload } from "@/components/canvas/a
 import { CanvasSidePanel } from "@/components/canvas/canvas-side-panel";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { useAgentStore } from "@/stores/use-agent-store";
+import { useCanvasChatStore } from "@/stores/use-canvas-chat-store";
+import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useAgentBridge } from "@/pages/canvas/hooks/use-agent-bridge";
 import { usePluginHost } from "@/pages/canvas/hooks/use-plugin-host";
@@ -183,6 +186,8 @@ function InfiniteCanvasPage() {
     const agentPanelOpen = useAgentStore((state) => state.panelOpen);
     const toggleAgentPanel = useAgentStore((state) => state.togglePanel);
     const openAgentPanel = useAgentStore((state) => state.openPanel);
+    const openSidePanelTab = useCanvasSidePanelStore((state) => state.toggleTab);
+    const setPendingPrompt = useCanvasChatStore((state) => state.setPendingPrompt);
     const containerRef = useRef<HTMLDivElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const uploadTargetRef = useRef<{ nodeId?: string; position?: Position } | null>(null);
@@ -243,6 +248,10 @@ function InfiniteCanvasPage() {
     const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [nodeCreatePosition, setNodeCreatePosition] = useState<Position | null>(null);
+    const [guideDismissed, setGuideDismissed] = useState(false);
+    useEffect(() => {
+        setGuideDismissed(false);
+    }, [projectId]);
     const [runningNodeId, setRunningNodeId] = useState<string | null>(null);
     const [isMiniMapOpen, setIsMiniMapOpen] = useState(false);
     const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>("lines");
@@ -3155,8 +3164,21 @@ function InfiniteCanvasPage() {
     if (!projectLoaded) return <CanvasRefreshShell />;
 
     return (
-        <main className="flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            <CanvasSidePanel nodes={nodes} selectedNodeIds={selectedNodeIds} onFocusNode={focusNode} onPreviewNode={setPreviewNodeId} onHoverNode={setHoverPreviewNodeId} onInsertAsset={handleAssetInsert} />
+        <main className="relative flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
+            <CanvasSidePanel
+                nodes={nodes}
+                selectedNodeIds={selectedNodeIds}
+                onFocusNode={focusNode}
+                onPreviewNode={setPreviewNodeId}
+                onHoverNode={setHoverPreviewNodeId}
+                onInsertAsset={handleAssetInsert}
+                onAddNodeAtCenter={() => {
+                    const rect = containerRef.current?.getBoundingClientRect();
+                    if (!rect) return;
+                    setContextMenu(null);
+                    setNodeCreatePosition(screenToCanvas(rect.left + rect.width / 2, rect.top + rect.height / 2));
+                }}
+            />
             <section className="relative min-w-0 flex-1 overflow-hidden">
                 <CanvasTopBar
                     title={currentProject?.title || t("canvas.projectPage.untitledCanvas")}
@@ -3196,6 +3218,11 @@ function InfiniteCanvasPage() {
                     }}
                     onCanvasDeselect={referencePickerNodeId ? undefined : deselectCanvas}
                     onCanvasDoubleClick={(event) => {
+                        if (referencePickerNodeId) return;
+                        setContextMenu(null);
+                        setNodeCreatePosition(screenToCanvas(event.clientX, event.clientY));
+                    }}
+                    onCanvasContextMenu={(event) => {
                         if (referencePickerNodeId) return;
                         setContextMenu(null);
                         setNodeCreatePosition(screenToCanvas(event.clientX, event.clientY));
@@ -3298,6 +3325,19 @@ function InfiniteCanvasPage() {
                 </InfiniteCanvas>
 
                 {referencePickerNodeId ? <button type="button" className="absolute left-1/2 top-4 z-[90] -translate-x-1/2 rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }} onClick={exitNodeReferenceSelection}>{t("canvas.references.selectingHint")}</button> : null}
+
+                <CanvasWelcomeGuide
+                    visible={nodes.length === 0 && !guideDismissed && !referencePickerNodeId}
+                    onSendPrompt={(text) => {
+                        setGuideDismissed(true);
+                        setPendingPrompt(text);
+                        if (!agentPanelOpen) openAgentPanel();
+                    }}
+                    onOpenTemplates={() => {
+                        setGuideDismissed(true);
+                        openSidePanelTab("prompts");
+                    }}
+                />
 
                 <div
                     className="pointer-events-none absolute inset-0 z-[80] flex items-center justify-center transition-opacity duration-200 ease-out"

@@ -31,6 +31,8 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
     const appendMessage = useCanvasChatStore((state) => state.appendMessage);
     const updateMessage = useCanvasChatStore((state) => state.updateMessage);
     const clearThread = useCanvasChatStore((state) => state.clearThread);
+    const pendingPrompt = useCanvasChatStore((state) => state.pendingPrompt);
+    const consumePendingPrompt = useCanvasChatStore((state) => state.consumePendingPrompt);
 
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
@@ -48,8 +50,8 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
 
     useEffect(() => () => abortRef.current?.abort(), []);
 
-    const send = async () => {
-        const text = input.trim();
+    const send = async (overrideText?: string) => {
+        const text = (overrideText ?? input).trim();
         const context = useAgentStore.getState().canvasContext;
         if (!text || sending || !context || !projectId) return;
         setInput("");
@@ -83,6 +85,15 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
     };
 
     const stop = () => abortRef.current?.abort();
+
+    // 欢迎引导等外部入口发来的首条消息：面板就绪后自动发送
+    useEffect(() => {
+        if (!pendingPrompt || !projectId || sending) return;
+        const text = pendingPrompt;
+        consumePendingPrompt();
+        void send(text);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pendingPrompt, projectId]);
 
     const applyOps = (item: OnlineChatMessage) => {
         const context = useAgentStore.getState().canvasContext;
