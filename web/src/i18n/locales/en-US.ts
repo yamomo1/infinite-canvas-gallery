@@ -34,7 +34,7 @@ export default {
         video: { title: "Video settings", quality: "Quality", size: "Size", seconds: "Seconds", mode: "Mode", modes: { frames: "First & last frame", reference: "General reference" }, resolution: "Resolution", ratio: "Aspect ratio", duration: "Duration", smart: "Smart", output: "Output", generateAudio: "Generate audio", watermark: "Add watermark", adaptive: "Adaptive", sizes: { landscape: "Landscape", portrait: "Portrait", square: "Square", widescreen: "Widescreen", tall: "Tall", auto: "Auto" }, ratios: { landscape: "Landscape", portrait: "Portrait", square: "Square", standardLandscape: "Standard landscape", standardPortrait: "Standard portrait", cinematic: "Cinematic", adaptive: "Adaptive" } },
         audio: { title: "Audio settings", voice: "Voice", format: "Format", speed: "Speed", instructions: "Voice instructions", instructionsPlaceholder: "For example: natural, warm, and suitable for narration." },
         text: { title: "Text settings", reasoning: "Reasoning effort", count: "Generation count" },
-        model: { select: "Select model", assign: "Assign a model for {{capability}} in the provider settings", noMatch: "No matching {{capability}} models", addFirst: "Add a provider and models in Settings first", capabilities: { image: "image generation", video: "video", text: "text", audio: "audio" } },
+        model: { select: "Select model", assign: "Please log in first to connect the platform and assign a {{capability}} model", noMatch: "No matching {{capability}} models", addFirst: "Please log in first — platform models connect automatically after login", capabilities: { image: "image generation", video: "video", text: "text", audio: "audio" } },
     },
     generation: { pending: ["Creating image", "Almost there", "Just a little longer", "Refining details"] },
     imageReferences: { label: "Image {{index}}", separator: ", ", promptPrefix: "Reference image labels: {{labels}}. Use these labels to interpret image references in the prompt.\n\n{{prompt}}" },
@@ -403,8 +403,8 @@ export default {
     config: {
         title: "Settings & Preferences",
         invalidFile: "The settings file format is invalid",
-        description: "Providers, model selection, sync, and local storage",
-        modalDescription: "Providers, default models, sync, and local storage",
+        description: "Model selection, sync, and local storage",
+        modalDescription: "Default models, sync, and local storage (models are connected automatically via platform login)",
         tabs: {
             channels: "Providers",
             localProxy: "Local proxy",

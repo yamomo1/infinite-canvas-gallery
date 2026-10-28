@@ -34,7 +34,7 @@ export default {
         video: { title: "视频设置", quality: "清晰度", size: "尺寸", seconds: "秒数", mode: "模式", modes: { frames: "首尾帧模式", reference: "全能参考模式" }, resolution: "分辨率", ratio: "比例", duration: "时长", smart: "智能", output: "输出", generateAudio: "生成声音", watermark: "添加水印", adaptive: "自适应", sizes: { landscape: "横屏", portrait: "竖屏", square: "方形", widescreen: "宽屏", tall: "长图", auto: "自动" }, ratios: { landscape: "横屏", portrait: "竖屏", square: "方形", standardLandscape: "标准横屏", standardPortrait: "标准竖屏", cinematic: "宽银幕", adaptive: "自适应" } },
         audio: { title: "音频设置", voice: "声音", format: "格式", speed: "语速", instructions: "声音指令", instructionsPlaceholder: "例如：自然、温暖、适合旁白。" },
         text: { title: "文本设置", reasoning: "推理强度", count: "生成次数" },
-        model: { select: "选择模型", assign: "请先在渠道里为{{capability}}指定模型", noMatch: "暂无匹配的{{capability}}模型", addFirst: "请先到配置里添加渠道和模型", capabilities: { image: "生图", video: "视频", text: "文本", audio: "音频" } },
+        model: { select: "选择模型", assign: "请先登录以接入平台并为{{capability}}指定模型", noMatch: "暂无匹配的{{capability}}模型", addFirst: "请先登录，登录后将自动接入平台模型", capabilities: { image: "生图", video: "视频", text: "文本", audio: "音频" } },
     },
     generation: { pending: ["正在创建图片", "马上就好了", "再等等", "正在整理细节"] },
     imageReferences: { label: "图片{{index}}", separator: "、", promptPrefix: "参考图片编号：{{labels}}。请按这些编号理解提示词中的图片引用。\n\n{{prompt}}" },
@@ -403,8 +403,8 @@ export default {
     config: {
         title: "配置与用户偏好",
         invalidFile: "配置文件格式不正确",
-        description: "渠道聚合、模型选择、同步与本地存储",
-        modalDescription: "渠道聚合、默认模型、同步与本地存储",
+        description: "模型选择、同步与本地存储",
+        modalDescription: "默认模型、同步与本地存储（模型接入由平台登录自动完成）",
         tabs: {
             channels: "渠道",
             localProxy: "本地代理",
