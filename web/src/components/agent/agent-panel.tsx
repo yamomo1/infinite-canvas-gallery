@@ -3,8 +3,10 @@ import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
 
 import { LocalAgentPanel } from "./local-agent-panel";
+import { OnlineCanvasChat } from "./online-canvas-chat";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { CANVAS_AGENT_PANEL_MOTION_MS, useAgentStore } from "@/stores/use-agent-store";
+import { useCanvasChatStore } from "@/stores/use-canvas-chat-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 const PANEL_MOTION_SECONDS = CANVAS_AGENT_PANEL_MOTION_MS / 1000;
@@ -18,6 +20,8 @@ export function AgentPanel() {
     const panelOpen = useAgentStore((state) => state.panelOpen);
     const panelClosing = useAgentStore((state) => state.panelClosing);
     const setAgentState = useAgentStore((state) => state.setAgentState);
+    const agentMode = useCanvasChatStore((state) => state.mode);
+    const setAgentMode = useCanvasChatStore((state) => state.setMode);
     const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
         event.preventDefault();
         const startX = event.clientX;
@@ -57,7 +61,24 @@ export function AgentPanel() {
                 style={{ width, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
             >
                 <button type="button" className="absolute inset-y-0 left-0 z-40 w-4 -translate-x-1/2 cursor-col-resize" onPointerDown={startResize} aria-label={t("agent.panel.resize")} />
-                <LocalAgentPanel embedded />
+                <div className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5" style={{ borderColor: theme.node.stroke }}>
+                    {(["online", "local"] as const).map((mode) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            className="rounded-md px-2 py-1 text-[11px] font-medium transition"
+                            style={
+                                agentMode === mode
+                                    ? { background: theme.node.activeStroke, color: theme.node.panel }
+                                    : { color: theme.node.muted }
+                            }
+                            onClick={() => setAgentMode(mode)}
+                        >
+                            {mode === "online" ? t("agent.online.tab") : t("agent.online.localTab")}
+                        </button>
+                    ))}
+                </div>
+                {agentMode === "online" ? <OnlineCanvasChat embedded /> : <LocalAgentPanel embedded />}
             </motion.aside>
         </motion.div>
     );

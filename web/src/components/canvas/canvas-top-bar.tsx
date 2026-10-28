@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 
 import { UserStatusActions } from "@/components/layout/user-status-actions";
 import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasChatStore } from "@/stores/use-canvas-chat-store";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
+import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { DOCS_URL } from "@/constant/env";
 
@@ -188,6 +190,28 @@ function CompactAgentStatus({ status, onClick }: { status: { connected: boolean;
     const colorTheme = useThemeStore((state) => state.theme);
     const theme = canvasThemes[colorTheme];
     const { t } = useTranslation();
+    const agentMode = useCanvasChatStore((state) => state.mode);
+    const config = useEffectiveConfig();
+    const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
+    const onlineModel = (config.textModel || config.model || "").split("::").pop() || "";
+    const onlineReady = Boolean(onlineModel) && isAiConfigReady(config, config.textModel || config.model);
+
+    // 在线模式：显示当前模型，而不是本地 Codex 的连接状态
+    if (agentMode === "online") {
+        return (
+            <button
+                type="button"
+                className="flex h-8 items-center gap-1.5 text-xs transition hover:opacity-75"
+                style={{ color: onlineReady ? "#16a34a" : theme.node.muted }}
+                onClick={onClick}
+                title={t("canvas.openAgent")}
+            >
+                <span className="size-2 rounded-full" style={{ background: onlineReady ? "#22c55e" : theme.node.muted }} />
+                <span className="max-w-[140px] truncate">{onlineReady ? t("canvas.onlineModel", { model: onlineModel }) : t("canvas.onlineModelMissing")}</span>
+            </button>
+        );
+    }
+
     const label = status.connected ? t("canvas.agentConnected") : status.enabled ? t("canvas.agentConnecting", { activity: status.activity || t("canvas.connecting") }) : t("canvas.agentDisconnected");
     const dotColor = status.connected ? "#22c55e" : status.enabled ? "#f59e0b" : theme.node.muted;
     return (
