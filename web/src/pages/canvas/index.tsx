@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { App, Button } from "antd";
 import { Download, FileUp, Plus } from "lucide-react";
@@ -7,7 +7,10 @@ import { useTranslation } from "react-i18next";
 import { readZip } from "@/lib/zip";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
+import { getStoredToken } from "@/services/api/newapi";
 import { openCloudCanvas } from "@/services/canvas-cloud-sync";
+import { useLoginModalStore } from "@/stores/use-login-modal";
+import { useUserStore } from "@/stores/use-user-store";
 import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import type { CanvasExportFile } from "@/types/canvas-export";
@@ -19,6 +22,7 @@ import { hasAgentUrlBootstrap } from "@/lib/agent/agent-url-bootstrap";
 export default function CanvasPage() {
     const { message } = App.useApp();
     const { t } = useTranslation();
+    const requestLogin = useLoginModalStore((state) => state.requestLogin);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
@@ -73,19 +77,43 @@ export default function CanvasPage() {
     // 深链：/canvas?open=<云端文档 id>（从 New API 画廊 / 我的画布点进来）
     const openRemoteId = Number(searchParams.get("open") || 0);
     const openHandledRef = useRef(false);
+    const pendingOpenRef = useRef<number | null>(null);
+
+    const tryOpenRemote = useCallback(
+        async (remoteId: number) => {
+            try {
+                const id = await openCloudCanvas(remoteId);
+                enterProject(id);
+            } catch (error) {
+                // 未登录时直接弹登录窗，登录成功后自动重试，避免用户卡在报错上
+                if (!getStoredToken()) {
+                    pendingOpenRef.current = remoteId;
+                    requestLogin(t("canvas.cloud.loginRequired"));
+                    return;
+                }
+                message.error(error instanceof Error ? error.message : t("canvas.cloud.openFailed"));
+            }
+        },
+        [enterProject, message, requestLogin, t],
+    );
+
     useEffect(() => {
         if (!hydrated || openHandledRef.current) return;
         if (!Number.isInteger(openRemoteId) || openRemoteId <= 0) return;
         openHandledRef.current = true;
-        void (async () => {
-            try {
-                const id = await openCloudCanvas(openRemoteId);
-                enterProject(id);
-            } catch (error) {
-                message.error(error instanceof Error ? error.message : t("canvas.cloud.openFailed"));
-            }
-        })();
-    }, [hydrated, message, openRemoteId, t]);
+        void tryOpenRemote(openRemoteId);
+    }, [hydrated, openRemoteId, tryOpenRemote]);
+
+    // 登录成功后，把刚才没打开的画布补开
+    useEffect(() => {
+        const unsubscribe = useUserStore.subscribe((state) => {
+            if (!state.user || pendingOpenRef.current == null) return;
+            const remoteId = pendingOpenRef.current;
+            pendingOpenRef.current = null;
+            void tryOpenRemote(remoteId);
+        });
+        return unsubscribe;
+    }, [tryOpenRemote]);
 
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">{t("canvas.opening")}</main>;
 

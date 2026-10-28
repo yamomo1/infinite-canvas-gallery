@@ -10,6 +10,7 @@ import "dayjs/locale/zh-cn";
 import { useTranslation } from "react-i18next";
 
 import { ClientRootInit } from "@/components/layout/client-root-init";
+import { UserLoginModal } from "@/components/layout/user-login-modal";
 import { useCanvasCloudSync } from "@/hooks/use-canvas-cloud-sync";
 import type { AppLocale } from "@/i18n";
 import { getAntThemeConfig } from "@/lib/app-theme";
@@ -51,6 +52,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
                 <App>
                     <QueryClientProvider client={queryClient}>
                         <ClientRootInit>{children}</ClientRootInit>
+                        <UserLoginModal />
                     </QueryClientProvider>
                 </App>
             </ProConfigProvider>

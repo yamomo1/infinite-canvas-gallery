@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { GitHubLink } from "@/components/layout/github-link";
-import { UserLoginModal } from "@/components/layout/user-login-modal";
 import { VersionReleaseModal } from "@/components/layout/version-release-modal";
 import { DOCS_URL } from "@/constant/env";
 import { changeAppLocale, type AppLocale } from "@/i18n";
@@ -14,6 +13,7 @@ import { syncCanvasToCloud } from "@/services/canvas-cloud-sync";
 import { cn } from "@/lib/utils";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useConfigStore } from "@/stores/use-config-store";
+import { useLoginModalStore } from "@/stores/use-login-modal";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 
@@ -37,8 +37,8 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
     const gitHubStyle = iconStyle;
     const user = useUserStore((state) => state.user);
     const logout = useUserStore((state) => state.logout);
+    const requestLogin = useLoginModalStore((state) => state.requestLogin);
     const { message } = App.useApp();
-    const [loginOpen, setLoginOpen] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
     const handleCloudSync = async () => {
@@ -118,7 +118,7 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                     type="button"
                     className={`${naturalIconClass} text-[13px] font-semibold`}
                     style={iconStyle}
-                    onClick={() => setLoginOpen(true)}
+                    onClick={() => requestLogin()}
                     aria-label={t("topNav.user.login")}
                     title={t("topNav.user.login")}
                 >
@@ -130,7 +130,6 @@ export function UserStatusActions({ showConfig = true, variant = "default", onOp
                     <Keyboard className="size-4" />
                 </button>
             ) : null}
-            <UserLoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
         </div>
     );
 }

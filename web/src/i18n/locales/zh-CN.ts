@@ -219,6 +219,7 @@ export default {
         library: "画布库",
         cloud: {
             openFailed: "打开云端画布失败，可能未登录或该画布未公开",
+            loginRequired: "这张画布需要登录后才能打开，登录成功后会自动继续",
         },
         title: "无限画布",
         imported: "已导入 {{count}} 个画布",
