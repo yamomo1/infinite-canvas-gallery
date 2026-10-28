@@ -93,7 +93,7 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
 
     const body = (
         <>
-            <div className="flex items-center gap-4 px-4 pt-3.5">
+            <div className="flex items-center gap-3 px-3.5 pt-3.5">
                 <TabButton label={t("canvas.sidePanel.canvas")} active={tab === "canvas"} theme={theme} onClick={() => setTab("canvas")} />
                 <TabButton label={t("canvas.sidePanel.assets")} active={tab === "assets"} theme={theme} onClick={() => setTab("assets")} />
                 <TabButton label={t("canvas.sidePanel.prompts")} active={tab === "prompts"} theme={theme} onClick={() => setTab("prompts")} />
@@ -101,12 +101,11 @@ export function CanvasSidePanel({ nodes, selectedNodeIds, onFocusNode, onPreview
                     <button
                         type="button"
                         onClick={() => setMode("pill")}
-                        className="ml-auto flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                        className="ml-auto grid size-7 shrink-0 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
                         title={t("canvas.sidePanel.switchPill")}
                         aria-label={t("canvas.sidePanel.switchPill")}
                     >
-                        <PanelLeft className="size-3.5" />
-                        {t("canvas.sidePanel.switchPill")}
+                        <PanelLeft className="size-4" />
                     </button>
                 ) : (
                     <button
@@ -246,7 +245,7 @@ function DockButton({ label, children, active, accent, theme, onClick }: { label
 
 function TabButton({ label, active, theme, onClick }: { label: string; active: boolean; theme: CanvasTheme; onClick: () => void }) {
     return (
-        <button type="button" onClick={onClick} className="relative pb-1.5 text-sm font-semibold transition-opacity" style={{ color: theme.node.text, opacity: active ? 1 : 0.45 }}>
+        <button type="button" onClick={onClick} className="relative shrink-0 whitespace-nowrap pb-1.5 text-sm font-semibold transition-opacity" style={{ color: theme.node.text, opacity: active ? 1 : 0.45 }}>
             {label}
             {active ? <motion.span layoutId="sidePanelTabIndicator" className="absolute inset-x-0 -bottom-px h-0.5 rounded-full" style={{ background: theme.toolbar.activeText }} transition={{ type: "spring", stiffness: 500, damping: 34 }} /> : null}
         </button>
@@ -854,7 +853,8 @@ const CanvasPromptsTab = memo(function CanvasPromptsTab({ onInsert, theme }: { o
                             {personalGroups.length ? (
                                 <div className="space-y-1">
                                     {personalGroups.map(({ category, items }) => {
-                                        const isCollapsed = collapsedCategories[category];
+                                        // 默认只展开第一个分组，其余收起；手动点过的分组以用户操作为准
+                                        const isCollapsed = collapsedCategories[category] ?? category !== personalGroups[0]?.category;
                                         return (
                                             <div key={category}>
                                                 <button

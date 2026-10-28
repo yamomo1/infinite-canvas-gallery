@@ -3030,7 +3030,8 @@ function InfiniteCanvasPage() {
             await ensureImagePreview(storedImage.storageKey);
             const meta = storedImage.width === 1 && storedImage.height === 1 ? await readImageMeta(storedImage.url) : storedImage;
             const config = fitNodeSize(meta.width, meta.height);
-            const center = screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+            // 连续插入时环形避让已有节点，避免都叠在视口中心
+            const center = findFreeCenterPosition(CanvasNodeType.Image);
             const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
             const node: CanvasNodeData = {
                 id,
@@ -3043,26 +3044,29 @@ function InfiniteCanvasPage() {
             };
 
             setNodes((prev) => [...prev, node]);
+            nodesRef.current = [...nodesRef.current, node];
             setSelectedNodeIds(new Set([id]));
             setSelectedConnectionId(null);
             setDialogNodeId(id);
         },
-        [screenToCanvas, size.height, size.width],
+        [findFreeCenterPosition],
     );
 
     const insertAssistantText = useCallback(
         (text: string, title?: string) => {
-            const center = screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+            // 连续插入时环形避让已有节点，避免都叠在视口中心
+            const center = findFreeCenterPosition(CanvasNodeType.Text);
             const node = {
                 ...createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }),
                 title: title || text.slice(0, 32) || "Assistant Text",
             };
 
             setNodes((prev) => [...prev, node]);
+            nodesRef.current = [...nodesRef.current, node];
             setSelectedNodeIds(new Set([node.id]));
             setSelectedConnectionId(null);
         },
-        [screenToCanvas, size.height, size.width],
+        [findFreeCenterPosition],
     );
 
     const handleAssetInsert = useCallback(
@@ -3071,28 +3075,28 @@ function InfiniteCanvasPage() {
                 insertAssistantText(payload.content, payload.title);
             } else if (payload.kind === "video") {
                 const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Video];
-                const center = screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+                // 连续插入时环形避让已有节点，避免都叠在视口中心
+                const center = findFreeCenterPosition(CanvasNodeType.Video);
                 const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                 const nextSize = fitNodeSize(payload.width || spec.width, payload.height || spec.height, VIDEO_NODE_MAX_WIDTH, VIDEO_NODE_MAX_HEIGHT);
-                setNodes((prev) => [
-                    ...prev,
-                    {
-                        id,
-                        type: CanvasNodeType.Video,
-                        title: payload.title,
-                        position: { x: center.x - nextSize.width / 2, y: center.y - nextSize.height / 2 },
-                        width: nextSize.width,
-                        height: nextSize.height,
-                        metadata: { content: payload.url, storageKey: payload.storageKey, status: NODE_STATUS_SUCCESS, naturalWidth: payload.width, naturalHeight: payload.height },
-                    },
-                ]);
+                const videoNode: CanvasNodeData = {
+                    id,
+                    type: CanvasNodeType.Video,
+                    title: payload.title,
+                    position: { x: center.x - nextSize.width / 2, y: center.y - nextSize.height / 2 },
+                    width: nextSize.width,
+                    height: nextSize.height,
+                    metadata: { content: payload.url, storageKey: payload.storageKey, status: NODE_STATUS_SUCCESS, naturalWidth: payload.width, naturalHeight: payload.height },
+                };
+                setNodes((prev) => [...prev, videoNode]);
+                nodesRef.current = [...nodesRef.current, videoNode];
                 setSelectedNodeIds(new Set([id]));
             } else {
                 insertAssistantImage({ id: `asset-${Date.now()}`, prompt: payload.title, dataUrl: payload.dataUrl, storageKey: payload.storageKey });
             }
             setAssetPickerOpen(false);
         },
-        [insertAssistantImage, insertAssistantText, screenToCanvas, size.height, size.width],
+        [insertAssistantImage, insertAssistantText, findFreeCenterPosition],
     );
 
     // Memoize every callback and render function passed to CanvasNode.
