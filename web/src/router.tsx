@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet } from "react-router-dom";
+import { createBrowserRouter, Outlet, type RouteObject } from "react-router-dom";
 
 import { AnalyticsTracker } from "@/components/layout/analytics-tracker";
 import UserLayout from "@/layouts/user-layout";
@@ -12,7 +12,11 @@ import NotFound from "@/pages/not-found";
 import PromptsPage from "@/pages/prompts";
 import VideoPage from "@/pages/video";
 
-export const router = createBrowserRouter([
+// 内嵌到 new-api 时产物构建为 --base=/studio/，路由必须跟随该 base，
+// 否则浏览器地址 /studio/canvas 匹配不上任何路由 → 落进 * NotFound（线上踩过）。
+const basename = import.meta.env.BASE_URL.replace(/\/+$/, "") || "/";
+
+const routes: RouteObject[] = [
     {
         element: (
             <UserLayout>
@@ -32,4 +36,6 @@ export const router = createBrowserRouter([
         ],
     },
     { path: "*", element: <NotFound /> },
-]);
+];
+
+export const router = createBrowserRouter(routes, { basename });
