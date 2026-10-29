@@ -74,6 +74,13 @@ export async function getSelf(): Promise<NewApiSelfUser> {
     return apiRequest<NewApiSelfUser>("/user/self");
 }
 
+// 单点登录：画布与主站同域时，主站的刷新 cookie 会自动随请求带上，
+// 调此端点即可用主站登录态换发一个 Bearer（access_token），无需再手动登录。
+// token 传 null 表示不附加 Bearer，仅依赖同域 cookie。
+export async function refreshSession(): Promise<NewApiLoginData> {
+    return apiRequest<NewApiLoginData>("/user/auth/refresh", { method: "POST" }, null);
+}
+
 // 画布工作台凭证：后端自动创建（或复用）本人的「Canvas Studio」令牌，
 // 前端拿 base_url + token 直接调 /v1/*，用量计入用户自己的额度。
 export type NewApiCanvasSession = { token: string; base_url: string };
