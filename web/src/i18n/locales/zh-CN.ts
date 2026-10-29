@@ -59,6 +59,7 @@ export default {
     prompts: {
         title: "提示词中心",
         library: "提示词库",
+        personal: "个人",
         total: "当前共 {{count}} 条提示词",
         category: "分类",
         tags: "标签",
@@ -676,7 +677,7 @@ export default {
             preset1: "把「赛博朋克雨夜」拆成 3 个镜头节点，并连好线",
             preset2: "给选中的图片节点写 3 条不同风格的生图提示词",
             preset3: "帮我整理这张画布：按流程重新排布节点并补上连线",
-            placeholder: "说点什么…（Enter 发送，Shift+Enter 换行）",
+            placeholder: "随心输入描述创意或需求，Enter 发送，Shift+Enter 换行",
             send: "发送",
             stop: "停止",
             thinking: "思考中…",
@@ -684,7 +685,8 @@ export default {
             applied: "已应用 {{count}} 项画布改动",
             opsReady: "模型想执行 {{count}} 项画布改动",
             apply: "应用到画布",
-            setupHint: "还没接入模型：登录后会自动接入本站 API；也可以点这里手动填地址和令牌。"
+            setupHint: "登录后会自动接入本站 API；也可以点这里手动填写地址和令牌。",
+            setupHintTitle: "还没接入模型",
         },
         status: { failed: "连接失败", connected: "已连接", connecting: "连接中", disconnected: "未连接" },
         state: { ready: "就绪", connectionRequired: "请填写 Local URL 和 Connect token", invalidUrl: "Local URL 格式不正确", offline: "离线", skillReadFailed: "读取 Skill 失败", skillParseFailed: "Skill 解析失败", requestFailed: "本地 Agent 请求失败" },

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { App } from "antd";
+import { App, Tooltip } from "antd";
 import { nanoid } from "nanoid";
-import { ArrowUp, Eraser, Settings2, Sparkles, Square, Wand2 } from "lucide-react";
+import { ArrowUp, Cpu, Eraser, PlugZap, Settings2, Sparkles, Square, Wand2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { streamCanvasChat, splitCanvasOps, type OnlineChatMessage } from "@/services/canvas-chat";
@@ -135,11 +135,12 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
                                 <button
                                     key={preset}
                                     type="button"
-                                    className="rounded-lg border px-3 py-1.5 text-left transition hover:opacity-100"
+                                    className="group flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition hover:opacity-100"
                                     style={{ borderColor: theme.node.stroke }}
                                     onClick={() => setInput(preset)}
                                 >
-                                    {preset}
+                                    <Sparkles className="size-3.5 shrink-0 opacity-50 transition group-hover:opacity-90" />
+                                    <span className="leading-5">{preset}</span>
                                 </button>
                             ))}
                         </div>
@@ -150,7 +151,7 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
                     {thread.map((item) => (
                         <div key={item.id} className={cn("flex", item.role === "user" ? "justify-end" : "justify-start")}>
                             <div
-                                className={cn("max-w-[92%] rounded-xl px-3 py-2 text-[13px] leading-6 whitespace-pre-wrap break-words")}
+                                className={cn("max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-6 whitespace-pre-wrap break-words")}
                                 style={
                                     item.role === "user"
                                         ? { background: accent, color: accentInk }
@@ -172,7 +173,7 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
 
                     {sending ? (
                         <div className="flex justify-start">
-                            <div className="max-w-[92%] rounded-xl px-3 py-2 text-[13px] leading-6 whitespace-pre-wrap break-words" style={{ background: theme.node.fill, border: `1px solid ${theme.node.stroke}` }}>
+                            <div className="max-w-[92%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-6 whitespace-pre-wrap break-words" style={{ background: theme.node.fill, border: `1px solid ${theme.node.stroke}` }}>
                                 {streamingText || <span className="opacity-60">{t("agent.online.thinking")}</span>}
                             </div>
                         </div>
@@ -181,13 +182,21 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
                 </div>
             </div>
 
-            <div className="border-t px-3 py-2" style={{ borderColor: theme.node.stroke }}>
+            <div className="px-2 pb-2 pt-1">
                 {!ready ? (
-                    <button type="button" className="mb-2 w-full rounded-lg border border-dashed px-3 py-2 text-left text-[12px] leading-5 opacity-80" style={{ borderColor: theme.node.stroke }} onClick={() => openConfigDialog(false)}>
-                        {t("agent.online.setupHint")}
+                    <button
+                        type="button"
+                        className="mb-2 flex w-full items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-left transition hover:border-amber-500/70 hover:bg-amber-500/15"
+                        onClick={() => openConfigDialog(false)}
+                    >
+                        <PlugZap className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-[13px] font-medium text-amber-600 dark:text-amber-400">{t("agent.online.setupHintTitle")}</span>
+                            <span className="mt-0.5 block text-xs leading-5 opacity-70">{t("agent.online.setupHint")}</span>
+                        </span>
                     </button>
                 ) : null}
-                <div className="flex items-end gap-2">
+                <div className="rounded-[20px] border px-3 pb-2.5 pt-3 shadow-lg" style={{ background: theme.toolbar.panel, borderColor: theme.node.stroke }}>
                     <textarea
                         value={input}
                         onChange={(event) => setInput(event.target.value)}
@@ -199,19 +208,32 @@ export function OnlineCanvasChat({ embedded }: { embedded?: boolean }) {
                         }}
                         rows={2}
                         placeholder={t("agent.online.placeholder")}
-                        className="max-h-32 min-h-16 flex-1 resize-none rounded-lg border bg-transparent px-3 py-2 text-[13px] leading-5 outline-none"
-                        style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                        className="max-h-32 min-h-14 w-full flex-1 resize-none bg-transparent px-0.5 text-[13px] leading-5 outline-none placeholder:opacity-50"
+                        style={{ color: theme.node.text }}
                     />
-                    <button
-                        type="button"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-lg disabled:opacity-40"
-                        style={{ background: accent, color: accentInk }}
-                        disabled={!ready || (!sending && !input.trim())}
-                        onClick={sending ? stop : () => void send()}
-                        aria-label={sending ? t("agent.online.stop") : t("agent.online.send")}
-                    >
-                        {sending ? <Square className="size-4" /> : <ArrowUp className="size-4" />}
-                    </button>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                        <Tooltip title={ready ? t("agent.online.config") : t("agent.online.setupHintTitle")}>
+                            <button
+                                type="button"
+                                className="flex h-8 min-w-0 max-w-[16rem] items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium opacity-80 transition hover:opacity-100"
+                                style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                                onClick={() => openConfigDialog(false)}
+                            >
+                                <Cpu className="size-3.5 shrink-0 opacity-70" />
+                                <span className="truncate">{modelLabel}</span>
+                            </button>
+                        </Tooltip>
+                        <button
+                            type="button"
+                            className="flex size-9 shrink-0 items-center justify-center rounded-full shadow-md transition hover:brightness-110 disabled:opacity-40"
+                            style={{ background: accent, color: accentInk }}
+                            disabled={!ready || (!sending && !input.trim())}
+                            onClick={sending ? stop : () => void send()}
+                            aria-label={sending ? t("agent.online.stop") : t("agent.online.send")}
+                        >
+                            {sending ? <Square className="size-4" /> : <ArrowUp className="size-4" />}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

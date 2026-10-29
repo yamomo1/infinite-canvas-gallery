@@ -1,8 +1,9 @@
-import { Copy, FileText } from "lucide-react";
+import { Copy } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, Card, Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { cn } from "@/lib/utils";
 import { formatPromptDate, type Prompt } from "@/services/api/prompts";
 
 export function PromptCard({
@@ -32,7 +33,17 @@ export function PromptCard({
             styles={{ body: compact ? { padding: 0 } : { display: "flex", flex: 1, flexDirection: "column", padding: 0 } }}
             cover={
                 <button type="button" className="block w-full cursor-pointer text-left" onClick={onOpen}>
-                    {item.coverUrl ? <img src={item.coverUrl} alt={item.title} className={compact ? "aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" : "aspect-[4/3] w-full object-cover"} loading="lazy" /> : <span className={compact ? "grid aspect-square w-full place-items-center bg-stone-100 text-stone-400 dark:bg-stone-900 dark:text-stone-600" : "grid aspect-[4/3] w-full place-items-center bg-stone-100 text-stone-400 dark:bg-stone-900 dark:text-stone-600"}><FileText className="size-8" /></span>}
+                    {item.coverUrl ? (
+                        <img src={item.coverUrl} alt={item.title} className={compact ? "aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" : "aspect-[4/3] w-full object-cover"} loading="lazy" />
+                    ) : (
+                        // 无封面时用提示词文案本身做缩略图（个人提示词等没有封面的场景）
+                        <span className={compact ? "block aspect-square w-full overflow-hidden bg-stone-100 dark:bg-stone-900" : "block aspect-[4/3] w-full overflow-hidden bg-stone-100 dark:bg-stone-900"}>
+                            <span className="flex h-full w-full flex-col justify-start gap-1 p-3 text-left">
+                                <span className="line-clamp-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-600">{item.title}</span>
+                                <span className={cn("whitespace-pre-wrap break-words text-[11px] leading-[1.6] text-stone-500 dark:text-stone-400", compact ? "line-clamp-6" : "line-clamp-5")}>{item.prompt || item.description || "—"}</span>
+                            </span>
+                        </span>
+                    )}
                 </button>
             }
         >

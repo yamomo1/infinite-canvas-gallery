@@ -59,6 +59,7 @@ export default {
     prompts: {
         title: "Prompt Center",
         library: "Prompt Library",
+        personal: "Personal",
         total: "{{count}} prompts",
         category: "Category",
         tags: "Tags",
@@ -676,7 +677,7 @@ export default {
             preset1: "Turn \'Cyberpunk rainy night\' into 3 shot nodes and wire them up",
             preset2: "Write 3 prompt variants for the selected image node",
             preset3: "Tidy this canvas: re-layout nodes by flow and add missing connections",
-            placeholder: "Say something… (Enter to send, Shift+Enter for a new line)",
+            placeholder: "Describe your idea or need. Enter to send, Shift+Enter for a new line",
             send: "Send",
             stop: "Stop",
             thinking: "Thinking…",
@@ -684,7 +685,8 @@ export default {
             applied: "Applied {{count}} canvas change(s)",
             opsReady: "Model wants to apply {{count}} canvas change(s)",
             apply: "Apply to canvas",
-            setupHint: "No model yet: signing in attaches the site API automatically. Click here to configure manually."
+            setupHint: "Signing in attaches this site's API automatically. Click here to configure the address and token manually.",
+            setupHintTitle: "No model connected"
         },
         status: { failed: "Connection failed", connected: "Connected", connecting: "Connecting", disconnected: "Disconnected" },
         state: { ready: "Ready", connectionRequired: "Enter the Local URL and Connect token", invalidUrl: "The Local URL is invalid", offline: "Offline", skillReadFailed: "Failed to read Skill", skillParseFailed: "Failed to parse Skill", requestFailed: "Local Agent request failed" },
